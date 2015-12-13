@@ -18,7 +18,7 @@ func main() {
             Name: "download",
             Aliases: []string{"dl"},
             Usage: "download from a peer",
-            ArgsUsage: "PEER",
+            ArgsUsage: "PEER PASSWORD",
             Action: transhift.Download,
             Flags: []cli.Flag{
                 cli.StringFlag{
@@ -32,7 +32,7 @@ func main() {
             Name: "upload",
             Aliases: []string{"ul"},
             Usage: "Upload to a peer",
-            ArgsUsage: "PEER FILE",
+            ArgsUsage: "PEER PASSWORD FILE",
             Action: transhift.Upload,
         },
     }
