@@ -146,7 +146,7 @@ func receive(conn net.Conn, incoming chan []byte, fileName string) {
         panic("Checksum mismatch")
     }
 
-    // rename file to corrent name
+    // rename file to correct name
     err = os.Rename(tmpFileName, fileName)
     check(err)
 }
