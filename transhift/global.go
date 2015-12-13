@@ -13,8 +13,6 @@ const (
     port uint16 = 50977
     // 1 KiB
     chunkSize uint16 = 1024
-    // 512 MiB
-    syncSize uint64 = uint64(chunkSize) * 512 * 1024
 )
 
 var (

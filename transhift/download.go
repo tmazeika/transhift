@@ -138,11 +138,6 @@ func receive(conn net.Conn, incoming chan []byte, password, fileName string) {
 
         totalBytesReceived += fileBufferLen
         bytesSinceSync += fileBufferLen
-
-        if (bytesSinceSync >= syncSize) {
-            save()
-            bytesSinceSync = 0
-        }
     }
 
     // do final save
