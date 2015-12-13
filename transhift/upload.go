@@ -46,7 +46,7 @@ func send(conn net.Conn, password, filePath string) {
     _, err := conn.Read(passwordResBuffer)
     check(err)
 
-    if (passwordResBuffer[0] == byte(1)) {
+    if (passwordResBuffer[0] == password_bad) {
         fmt.Println("Sent wrong password")
         conn.Close()
         return

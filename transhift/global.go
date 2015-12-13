@@ -13,6 +13,9 @@ const (
     port uint16 = 50977
     // 1 KiB
     chunkSize uint16 = 1024
+
+    password_good = byte(0)
+    password_bad = byte(1)
 )
 
 var (

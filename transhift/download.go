@@ -79,12 +79,12 @@ func receive(conn net.Conn, incoming chan []byte, password, fileName string) {
 
     if (incomingPassword != password) {
         fmt.Println("Peer sent wrong password")
-        conn.Write([]byte{1})
+        conn.Write([]byte{password_bad})
         conn.Close()
         return
     } else {
         fmt.Println("Password verified")
-        conn.Write([]byte{0})
+        conn.Write([]byte{password_good})
     }
 
     // wait for fileName
