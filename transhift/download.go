@@ -27,7 +27,6 @@ func listen(password, fileName string) {
     fmt.Println("Listening...")
 
     // listen for a peer connection
-    // TODO: don't just accept from any old (or malicious!) peer
     conn, err := listener.Accept()
     check(err)
     defer conn.Close()
