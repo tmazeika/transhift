@@ -51,9 +51,9 @@ func Download(c *cli.Context) {
         check(err)
         fmt.Println("done")
         defer clients[0].DeletePortMapping("", port, "tcp")
+    } else {
+        fmt.Println("UPnP is either not needed or is disabled; continuing...")
     }
-
-    fmt.Println("UPnP is either not needed or is disabled; continuing...")
 
     listen(c.Args()[0], c.String("destination"))
 }
