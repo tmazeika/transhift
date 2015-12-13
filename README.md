@@ -10,13 +10,6 @@ To download and install, run:
 curl -s https://raw.githubusercontent.com/transhift/transhift/master/install.sh | bash
 ```
 
-Or run each command individually:
-
-```bash
-wget https://github.com/transhift/transhift/releases/download/v0.1.0-alpha/transhift-0.1.0.tar.gz
-tar -xf transhift-0.1.0.tar.gz
-rm transhift-0.1.0.tar.gz
-sudo mv transhift /usr/bin
-```
+Or run each command individually from the [install script](https://github.com/transhift/transhift/blob/master/install.sh).
 
 To test it out, run `transhift --version` and you should see `Transhift version 0.1.0`.
