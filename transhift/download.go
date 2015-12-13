@@ -9,6 +9,7 @@ import (
     "bytes"
     "encoding/hex"
     "path/filepath"
+    "github.com/huin/goupnp/dcps/internetgateway2"
 )
 
 const (
@@ -16,6 +17,44 @@ const (
 )
 
 func Download(c *cli.Context) {
+    fmt.Print("Preparing for listen... ")
+
+    var ipStr string
+
+    ifaces, err := net.Interfaces()
+    check(err)
+    for _, i := range ifaces {
+        addrs, err := i.Addrs()
+        check(err)
+
+        for _, addr := range addrs {
+            var ip net.IP
+
+            switch v := addr.(type) {
+                case *net.IPNet:
+                    ip = v.IP
+                case *net.IPAddr:
+                    ip = v.IP
+            }
+
+            if (! ip.IsLoopback() && ip.To4() != nil) {
+                ipStr = ip.String()
+            }
+        }
+    }
+
+    clients, _, err := internetgateway2.NewWANIPConnection1Clients()
+    check(err)
+
+    if (len(clients) > 0) {
+        err = clients[0].AddPortMapping("", port, "tcp", port, ipStr, true, "Transhift", 0xFFFFFFFF)
+        check(err)
+        fmt.Println("done")
+        defer clients[0].DeletePortMapping("", port, "tcp")
+    }
+
+    fmt.Println("UPnP is either not needed or is disabled; continuing...")
+
     listen(c.Args()[0], c.String("destination"))
 }
 
