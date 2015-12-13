@@ -92,7 +92,10 @@ func send(conn net.Conn, password, filePath string) {
         // read a chunk of *up to* chunkSize bytes from file
         fileBuffer := make([]byte, chunkSize)
         fileBytesRead, err := file.ReadAt(fileBuffer, int64(totalBytesRead))
-        check(err)
+
+        if len(fileBuffer) == fileBytesRead {
+            check(err)
+        }
 
         totalBytesRead += uint64(fileBytesRead)
 

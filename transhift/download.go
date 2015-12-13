@@ -52,21 +52,26 @@ func createIncomingChannel(conn net.Conn) chan []byte {
             }
 
             if bytesRead != len(buffer) {
-                panic(fmt.Sprint("Didn't read %d bytes", sizeOfUint64))
+                panic(fmt.Sprintf("Didn't read %d bytes; %d instead", sizeOfUint64, bytesRead))
             }
 
             dataSize := bytesToUint64(buffer)
 
-            // read dataSize bytes from the connection
-            dataBuffer := make([]byte, dataSize)
-            dataBytesRead, err := conn.Read(dataBuffer)
-            check(err)
+            var finalDataBytesRead bytes.Buffer
 
-            if dataBytesRead != len(dataBuffer) {
-                panic(fmt.Sprint("Didn't read %d bytes", dataSize))
+            for uint64(finalDataBytesRead.Len()) < dataSize {
+                // read dataSize bytes from the connection
+                dataBuffer := make([]byte, dataSize - uint64(finalDataBytesRead.Len()))
+                dataBytesRead, err := conn.Read(dataBuffer)
+                finalDataBytesRead.Write(dataBuffer[:dataBytesRead])
+                check(err)
             }
 
-            incomingChannel <- dataBuffer
+            if uint64(finalDataBytesRead.Len()) != dataSize {
+                panic(fmt.Sprintf("Didn't read %d bytes; %d instead", dataSize, finalDataBytesRead.Len()))
+            }
+
+            incomingChannel <- finalDataBytesRead.Bytes()
         }
     }()
 
@@ -131,7 +136,7 @@ func receive(conn net.Conn, incoming chan []byte, password, fileName string) {
         check(err)
 
         if fileBytesWritten != len(fileBuffer) {
-            panic(fmt.Sprint("Didn't write %d bytes", len(fileBuffer)))
+            panic(fmt.Sprintf("Didn't write %d bytes; %d instead", len(fileBuffer), fileBytesWritten))
         }
 
         fileBufferLen := uint64(len(fileBuffer))
