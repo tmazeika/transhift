@@ -8,6 +8,7 @@ import (
     "os"
     "bytes"
     "encoding/binary"
+    "path/filepath"
 )
 
 func Upload(c *cli.Context) {
@@ -75,6 +76,11 @@ func send(conn net.Conn, password, filePath string) {
     // calculate/write SHA256 checksum
     sum := checksum(filePath)
     conn.Write(bytesWithLen(sum))
+
+    path, err := filepath.Abs(fileName)
+    check(err)
+
+    fmt.Printf("Uploading file '%s' with a size of %s\n", path, formatSize(fileSize))
 
     var totalBytesRead uint64
     doProgressPrint := true

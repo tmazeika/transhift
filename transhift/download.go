@@ -8,6 +8,7 @@ import (
     "os"
     "bytes"
     "encoding/hex"
+    "path/filepath"
 )
 
 const (
@@ -142,8 +143,6 @@ func receive(conn net.Conn, incoming chan []byte, password, fileName string) {
     // do final save
     save()
 
-    fmt.Println("File downloaded")
-
     // calculate/verify sha256 checksum
     tmpFileSum := checksum(tmpFileName)
 
@@ -156,6 +155,11 @@ func receive(conn net.Conn, incoming chan []byte, password, fileName string) {
     // rename file to correct name
     err = os.Rename(tmpFileName, fileName)
     check(err)
+
+    path, err := filepath.Abs(fileName)
+    check(err)
+
+    fmt.Printf("File downloaded at '%s'\n", path)
 }
 
 func bytesToUint64(b []byte) uint64 {
