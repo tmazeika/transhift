@@ -8,13 +8,13 @@ A tiny and simple peer-to-peer file mover.
 
 This will continuously try to connect to the remote and then send the file upon connection.
 
-`transhift upload [IP of remote] [path to file]`
+`transhift upload [IP of remote] [password] [path to file]`
 
 **Remote &rightarrow; Local**
 
 This will wait for a connection to arrive from the specified remote IP and then download the file.
 
-`transhift download [IP of remote]`
+`transhift download [password] [IP of remote]`
 
 *Options*
 

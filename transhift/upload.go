@@ -11,10 +11,10 @@ import (
 )
 
 func Upload(c *cli.Context) {
-    connect(c.Args()[0], c.Args()[1])
+    connect(c.Args()[0], c.Args()[1], c.Args()[2])
 }
 
-func connect(peer, filePath string) {
+func connect(peer, password, filePath string) {
     var conn net.Conn
 
     fmt.Print("Dialing peer")
@@ -35,10 +35,25 @@ func connect(peer, filePath string) {
     defer conn.Close()
 
     fmt.Println("\nConnected to peer")
-    send(conn, filePath)
+    send(conn, password, filePath)
 }
 
-func send(conn net.Conn, filePath string) {
+func send(conn net.Conn, password, filePath string) {
+    // write password
+    conn.Write(bytesWithLen([]byte(password)))
+
+    passwordResBuffer := make([]byte, 1)
+    _, err := conn.Read(passwordResBuffer)
+    check(err)
+
+    if (passwordResBuffer[0] == byte(1)) {
+        fmt.Println("Sent wrong password")
+        conn.Close()
+        return
+    } else {
+        fmt.Println("Password verified")
+    }
+
     // open file
     file, err := os.Open(filePath)
     check(err)

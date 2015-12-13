@@ -18,7 +18,7 @@ func Download(c *cli.Context) {
     listen(c.Args()[0], c.String("destination"))
 }
 
-func listen(peer, fileName string) {
+func listen(password, fileName string) {
     // start the TCP listener
     listener, err := net.Listen("tcp", net.JoinHostPort("", portStr))
     check(err)
@@ -34,7 +34,7 @@ func listen(peer, fileName string) {
 
     fmt.Println("Connected to peer")
     incomingChannel := createIncomingChannel(conn)
-    receive(conn, incomingChannel, fileName)
+    receive(conn, incomingChannel, password, fileName)
 }
 
 func createIncomingChannel(conn net.Conn) chan []byte {
@@ -73,7 +73,20 @@ func createIncomingChannel(conn net.Conn) chan []byte {
     return incomingChannel
 }
 
-func receive(conn net.Conn, incoming chan []byte, fileName string) {
+func receive(conn net.Conn, incoming chan []byte, password, fileName string) {
+    // wait for password
+    incomingPassword := string(<-incoming)
+
+    if (incomingPassword != password) {
+        fmt.Println("Peer sent wrong password")
+        conn.Write([]byte{1})
+        conn.Close()
+        return
+    } else {
+        fmt.Println("Password verified")
+        conn.Write([]byte{0})
+    }
+
     // wait for fileName
     incomingFileName := string(<-incoming)
 
