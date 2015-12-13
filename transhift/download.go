@@ -110,7 +110,7 @@ func receive(conn net.Conn, incoming chan []byte, password, fileName string) {
 
     var totalBytesReceived uint64
     var bytesSinceSync uint64
-    var doProgressPrint bool
+    doProgressPrint := true
 
     updateProgress(&totalBytesReceived, &fileSize, &doProgressPrint)
 
