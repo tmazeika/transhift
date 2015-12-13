@@ -7,13 +7,13 @@ A tiny and simple peer-to-peer file mover.
 To download and install, run:
 
 ```bash
-curl -s https://raw.githubusercontent.com/bionicrm/transhift/master/install.sh | bash
+curl -s https://raw.githubusercontent.com/transhift/transhift/master/install.sh | bash
 ```
 
 Or run each command individually:
 
 ```bash
-wget https://github.com/bionicrm/transhift/releases/download/v0.1.0-alpha/transhift-0.1.0.tar.gz
+wget https://github.com/transhift/transhift/releases/download/v0.1.0-alpha/transhift-0.1.0.tar.gz
 tar -xf transhift-0.1.0.tar.gz
 rm transhift-0.1.0.tar.gz
 sudo mv transhift /usr/bin
