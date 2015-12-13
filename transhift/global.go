@@ -1,4 +1,5 @@
 package transhift
+
 import (
     "fmt"
     "crypto/sha256"
