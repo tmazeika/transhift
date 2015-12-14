@@ -2,7 +2,7 @@
 
 A tiny and simple peer-to-peer file mover.
 
-### How It Works
+### Usage
 
 ##### Prerequisites
 
