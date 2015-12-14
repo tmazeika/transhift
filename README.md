@@ -9,6 +9,7 @@ A tiny and simple peer-to-peer file mover.
 * Both you and your friend (or other machine) must have the binary installed
 * You and your friend should agree on a password via other messaging means (SMS, IRC, IRL, etc.); this doesn't have to be super secure, but you definitely shouldn't use one that you've used for other online accounts
 * If you are *sending* a file to your friend, ask them for their external IP address (tell them to see [whatsmyip.org](http://www.whatsmyip.org/)); if you are *receiving* a file from your friend, be sure to tell them *your* external IP address
+* UPnP should be enabled on NAT protected machines that are to receive files; this is usually enabled by default
 
 ##### Sending a file to a friend
 
