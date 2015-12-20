@@ -13,12 +13,12 @@ A tiny and simple peer-to-peer file mover.
 
 ##### Sending a file to a friend
 
-1. Tell your friend to run `transhift download <password>` where `<password>` is the password you and your friend agreed on.
+1. Tell your friend to run `transhift download <password>` where `<password>` is the password you and your friend agreed on
 2. On your own machine, run `transhift upload <peer> <password> <file>` where `<peer>` is the external IP address of your friend's machine, `<password>` is the password you and your friend agreed on, and `<file>` is the relative or absolute path of the file you would like to send them
 
 ##### Receiving a file from your friend
 
-1. On your own machine, run `transhift download <password>` where `<password>` is the password you and your friend agreed on.
+1. On your own machine, run `transhift download <password>` where `<password>` is the password you and your friend agreed on
 2. Tell your friend to run `transhift upload <peer> <password> <file>` where `<peer>` is the external IP address of your machine, `<password>` is the password you and your friend agreed on, and `<file>` is the relative or absolute path of the file they would like to send you
 
 ### Quick Start
