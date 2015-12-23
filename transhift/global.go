@@ -11,11 +11,11 @@ import (
 )
 
 const (
-    port          uint16 = 50977
-    chunk_size    uint16 = 1024
+    port         uint16 = 50977
+    chunkSize    uint16 = 1024
 
-    password_good byte = 0
-    password_bad  byte = 1
+    passwordGood byte = 0
+    passwordBad  byte = 1
 )
 
 var (
@@ -29,15 +29,18 @@ func check(e error) {
 }
 
 func checksum(filePath string) []byte {
-    fmt.Print("Calculating sha256 checksum... ")
+    fmt.Print("Calculating SHA-256 checksum... ")
+
     file, err := os.Open(filePath)
     check(err)
     defer file.Close()
 
-    hasher := sha256.New()
-    _, err = io.Copy(hasher, file)
+    hash := sha256.New()
+
+    _, err = io.Copy(hash, file)
     check(err)
-    sum := hasher.Sum(nil)
+
+    sum := hash.Sum(nil)
     fmt.Println(hex.EncodeToString(sum))
     return sum;
 }
