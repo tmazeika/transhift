@@ -47,7 +47,7 @@ func send(conn net.Conn, password, filePath string) {
     _, err := conn.Read(passwordResBuffer)
     check(err)
 
-    if (passwordResBuffer[0] == password_bad) {
+    if (passwordResBuffer[0] == passwordBad) {
         fmt.Println("Sent wrong password")
         conn.Close()
         return
@@ -90,7 +90,7 @@ func send(conn net.Conn, password, filePath string) {
     // start reading/sending file bytes
     for totalBytesRead < uint64(fileSize) {
         // read a chunk of *up to* chunkSize bytes from file
-        fileBuffer := make([]byte, chunk_size)
+        fileBuffer := make([]byte, chunkSize)
         fileBytesRead, err := file.ReadAt(fileBuffer, int64(totalBytesRead))
 
         if len(fileBuffer) == fileBytesRead {
