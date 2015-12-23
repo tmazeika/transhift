@@ -41,7 +41,10 @@ func checksum(filePath string) []byte {
     check(err)
 
     sum := hash.Sum(nil)
+
+    // print checksum
     fmt.Println(hex.EncodeToString(sum))
+
     return sum;
 }
 
