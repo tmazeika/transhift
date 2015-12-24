@@ -4,10 +4,10 @@ import (
     "github.com/codegangsta/cli"
     "net"
     "fmt"
-    "os"
-    "bytes"
-    "encoding/hex"
-    "path/filepath"
+//    "os"
+//    "bytes"
+//    "encoding/hex"
+//    "path/filepath"
     "github.com/huin/goupnp/dcps/internetgateway2"
     "math"
 )
@@ -89,27 +89,28 @@ func (p *PortMapping) Remove() {
 }
 
 func Download(c *cli.Context) {
-    password := c.Args()[0]
-    destination := c.String("destination")
-
-    portMapping := PortMapping{port: port}
-    portMapping.Add()
-    defer portMapping.Remove()
-
-    uploadPeer := UploadPeer{}
-
-    if ok := dlHandleConnect(&uploadPeer, port); ! ok { return }
-
-    if ok := dlHandlePassword(&uploadPeer, password); ! ok { return }
-
-    fileInfo := dlHandleFileInfo(&uploadPeer)
-    ok, file := dlHandleFileChunks(&uploadPeer, destination, fileInfo)
-
-    if ! ok { return }
-
-    if ok := dlHandleVerification(fileInfo, file); ! ok { return }
+//    password := c.Args()[0]
+//    destination := c.String("destination")
+//
+//    portMapping := PortMapping{port: port}
+//    portMapping.Add()
+//    defer portMapping.Remove()
+//
+//    uploadPeer := UploadPeer{}
+//
+//    if ok := dlHandleConnect(&uploadPeer, port); ! ok { return }
+//
+//    if ok := dlHandlePassword(&uploadPeer, password); ! ok { return }
+//
+//    fileInfo := dlHandleFileInfo(&uploadPeer)
+//    ok, file := dlHandleFileChunks(&uploadPeer, destination, fileInfo)
+//
+//    if ! ok { return }
+//
+//    if ok := dlHandleVerification(fileInfo, file); ! ok { return }
 }
 
+/*
 func dlHandleConnect(uploadPeer *UploadPeer, port uint16) (ok bool) {
     fmt.Print("Listening for peer... ")
 
@@ -222,3 +223,4 @@ func dlHandleVerification(fileInfo *UploadPeerFileInfo, file *os.File) (ok bool)
 
     return false
 }
+*/

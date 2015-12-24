@@ -4,16 +4,18 @@ import (
     "os"
     "crypto/sha256"
     "io"
+    "fmt"
 )
 
-func fileChecksum(file *os.File) ([]byte, error) {
+func fileChecksum(file *os.File) []byte {
     hash := sha256.New()
 
     if _, err := io.Copy(hash, file); err != nil {
-        return nil, err
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
     }
 
-    return hash.Sum(nil), nil;
+    return hash.Sum(nil);
 }
 
 func stringChecksum(data string) []byte {
