@@ -153,7 +153,9 @@ func (d *UploadPeer) ReceiveFileInfo() (name string, size uint64, checksum []byt
     return
 }
 
-func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64, handler func([]byte)) {
+func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan []byte {
+    ch := make(chan []byte)
+
     var totalRead uint64
 
     go func() {
@@ -187,9 +189,11 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64, handler func([]byte)) {
             }
 
             // the chunk is done being read, so off to get handled...
-            handler(dataBuff)
+            ch <- dataBuff
         }
     }()
+
+    return ch
 }
 
 func (d *UploadPeer) SendProtocolError(err byte) {
