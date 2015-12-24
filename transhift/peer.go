@@ -4,20 +4,47 @@ import (
     "net"
     "fmt"
     "time"
-    "log"
     "bufio"
     "strconv"
     "os"
+    "encoding/binary"
+    "bytes"
+)
+
+// protocol errors
+const (
+    PasswordMismatch = byte(iota)
+    ChecksumMismatch = byte(iota)
 )
 
 func portStr(port uint16) string {
     return strconv.Itoa(int(port))
 }
 
-type DownloadPeer struct {
-    conn net.Conn
+func makePeerReadChannel(reader *bufio.Reader) (ch chan []byte) {
+    ch = make(chan []byte)
 
-    ch chan []byte
+    go func() {
+        for {
+            data, err := reader.ReadBytes('\n')
+
+            if err != nil {
+                fmt.Fprintln(os.Stderr, "Error reading line: ", err)
+            }
+
+            ch <- data
+        }
+    }()
+}
+
+// ************************************************************************** //
+// * DownloadPeer                                                           * //
+// ************************************************************************** //
+
+type DownloadPeer struct {
+    conn   net.Conn
+    reader bufio.Reader
+    writer bufio.Writer
 }
 
 func (d *DownloadPeer) Connect(host string, port uint16) {
@@ -31,29 +58,10 @@ func (d *DownloadPeer) Connect(host string, port uint16) {
         }
     }
 
+    d.reader = bufio.NewReader(d.conn)
+    d.writer = bufio.NewWriter(d.conn)
+
     fmt.Println("connected")
-}
-
-func (d *DownloadPeer) Channel() chan []byte {
-    d.ch = make(chan []byte)
-
-    // read
-    go func() {
-        reader := bufio.NewReader(d.conn)
-
-        for {
-            data, err := reader.ReadBytes('\n')
-
-            if err != nil {
-                d.conn.Close()
-                fmt.Fprintln(os.Stderr, "Error reading line: ", err)
-            }
-
-            d.ch <- data
-        }
-    }()
-
-    return d.ch
 }
 
 func (d *DownloadPeer) SendPassword(password string) {
@@ -71,10 +79,16 @@ func (d *DownloadPeer) SendFileChunk(chunk []byte) {
     d.conn.Write(chunk)
 }
 
-type UploadPeer struct {
-    conn net.Conn
+// ************************************************************************** //
+// * UploadPeer                                                             * //
+// ************************************************************************** //
 
-    ch chan []byte
+type UploadPeer struct {
+    conn     net.Conn
+    reader   bufio.Reader
+    writer   bufio.Writer
+    in       chan []byte
+    fileSize uint64
 }
 
 func (d *UploadPeer) Connect(port uint16) error {
@@ -93,7 +107,66 @@ func (d *UploadPeer) Connect(port uint16) error {
         return err
     }
 
+    d.reader = bufio.NewReader(d.conn)
+    d.writer = bufio.NewWriter(d.conn)
+    d.in = make(chan []byte)
+
+    go func() {
+        for {
+            data, err := d.reader.ReadBytes('\n')
+
+            if err != nil {
+                fmt.Fprintln(os.Stderr, "Error reading line: ", err)
+                break
+            }
+
+            d.in <- data
+        }
+    }()
+
     fmt.Println("connected")
 
     return nil
+}
+
+func (d *UploadPeer) ReceivePassword() string {
+    return string(<- d.in)
+}
+
+func (d *UploadPeer) ReceiveFileInfo() (name string, size uint64) {
+    name = string(<- d.in)
+    size = binary.BigEndian.Uint64(<- d.in)
+    d.fileSize = size
+    return
+}
+
+func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan []byte {
+    ch := make(chan []byte)
+
+    var totalRead uint64
+
+    go func() {
+        for totalRead < d.fileSize {
+            dataBuff := make([]byte, chunkSize)
+
+            var chunkRead uint64
+
+            for chunkRead < chunkSize {
+                subDataRead, err := d.reader.Read(dataBuff[chunkRead:])
+
+                if err != nil {
+                    fmt.Fprintln(os.Stderr, "Error reading line: ", err)
+                    return
+                }
+
+                chunkRead += subDataRead
+            }
+        }
+    }()
+
+    return ch
+}
+
+func (d *UploadPeer) SendProtocolError(err byte) {
+    d.writer.WriteByte(err)
 }
