@@ -13,13 +13,13 @@ import (
 )
 
 const (
-    chunkSize uint16 = 1024
+    chunkSize uint64 = 1024
 )
 
 type PortMapping struct {
     port   uint16
     added  bool
-    client internetgateway2.WANIPConnection1
+    client *internetgateway2.WANIPConnection1
 }
 
 func (p *PortMapping) Add() error {
@@ -94,12 +94,12 @@ func Download(c *cli.Context) {
 
     uploadPeer := UploadPeer{}
 
-    if ok := dlHandleConnect(uploadPeer, port); ! ok { return }
+    if ok := dlHandleConnect(&uploadPeer, port); ! ok { return }
 
-    if ok := dlHandlePassword(uploadPeer, password); ! ok { return }
+    if ok := dlHandlePassword(&uploadPeer, password); ! ok { return }
 
-    fileInfo := dlHandleFileInfo(uploadPeer)
-    ok, file := dlHandleFileChunks(uploadPeer, destination, fileInfo)
+    fileInfo := dlHandleFileInfo(&uploadPeer)
+    ok, file := dlHandleFileChunks(&uploadPeer, destination, fileInfo)
 
     if ! ok { return }
 
@@ -135,16 +135,16 @@ func dlHandlePassword(uploadPeer *UploadPeer, password string) (ok bool) {
     }
 }
 
-func dlHandleFileInfo(uploadPeer *UploadPeer) UploadPeerFileInfo {
+func dlHandleFileInfo(uploadPeer *UploadPeer) *UploadPeerFileInfo {
     fmt.Print("Receiving file info... ")
 
     info := uploadPeer.ReceiveFileInfo()
 
     fmt.Println("done")
-    return info
+    return &info
 }
 
-func dlHandleFileChunks(uploadPeer *UploadPeer, destination string, fileInfo *UploadPeerFileInfo) (ok bool, os.File) {
+func dlHandleFileChunks(uploadPeer *UploadPeer, destination string, fileInfo *UploadPeerFileInfo) (ok bool, file *os.File) {
     if destination == "" {
         destination = fileInfo.name
     }
@@ -156,15 +156,23 @@ func dlHandleFileChunks(uploadPeer *UploadPeer, destination string, fileInfo *Up
         return false, nil
     }
 
+    absPath, err := filepath.Abs(destination)
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Error: ", err)
+        return false, nil
+    }
+
     fmt.Printf("Downloading file '%s' with a size of %s (SHA-256 %s) to %s\n",
-        fileInfo.name, formatSize(fileInfo.name), hex.EncodeToString(fileInfo.checksum),
-        filepath.Abs(destination))
+        fileInfo.name, formatSize(float64(fileInfo.size)),
+        hex.EncodeToString(fileInfo.checksum), absPath)
 
     var totalRead uint64
 
     ch := uploadPeer.ReceiveFileChunks(chunkSize)
+    updateProgressStopSignal := true
 
-    updateProgress(&float64(totalRead), float64(fileInfo.size), &true)
+    updateProgress(&totalRead, fileInfo.size, &updateProgressStopSignal)
 
     // while the total amount of bytes we've read is less than the file's
     // size...
@@ -179,21 +187,21 @@ func dlHandleFileChunks(uploadPeer *UploadPeer, destination string, fileInfo *Up
         if ! fileChunk.good {
             fmt.Fprintln(os.Stderr, "Peer stopped sending file, therefore your " +
                 "copy cannot be verified and may be corrupt and/or incomplete. " +
-                "You should (probably) delete the incomplete file: ", filepath.Abs(destination))
+                "You should (probably) delete the incomplete file: ", absPath)
             return false, nil
         }
 
         file.WriteAt(fileChunk.data, int64(totalRead))
     }
 
-    fmt.Printf("Done! Wrote: %s\n", filepath.Abs(destination))
+    fmt.Printf("Done! Wrote: %s\n", absPath)
     return true, file
 }
 
 func dlHandleVerification(fileInfo *UploadPeerFileInfo, file *os.File) (ok bool) {
     fmt.Print("Verifying checksum... ")
 
-    fileHash, err := fileChecksum(file)
+    fileHash, err := fileChecksum(*file)
 
     if err != nil {
         fmt.Print("error: ", err)

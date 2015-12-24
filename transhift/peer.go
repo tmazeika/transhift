@@ -97,7 +97,7 @@ func (d *DownloadPeer) ProtocolResponseChannel() chan byte {
         for {
             // read a single byte
             dataBuff := make([]byte, 1)
-            _, err := d.conn.Read(dataBuff)
+            _, err := (*d.conn).Read(dataBuff)
 
             if err != nil {
                 fmt.Fprintln(os.Stderr, "Error reading byte: ", err)
@@ -239,5 +239,5 @@ func (d *UploadPeer) SendProtocolResponse(res byte) {
 }
 
 func (d *UploadPeer) Close() {
-    d.conn.Close()
+//    d.conn.Close()
 }

@@ -24,12 +24,12 @@ func formatSize(size float64) string {
     }
 }
 
-func updateProgress(now *float64, total float64, stopSignal *bool) {
+func updateProgress(now *uint64, total uint64, stopSignal *bool) {
     go func() {
         for ! *stopSignal && *now < total {
-            percent := *now / total * 100
+            percent := float64(*now) / float64(total) * 100.0
 
-            fmt.Printf("%.2f%% (%s/%s)\n", percent, formatSize(*now), formatSize(total))
+            fmt.Printf("%.2f%% (%s/%s)\n", percent, formatSize(float64(*now)), formatSize(float64(total)))
             time.Sleep(time.Second)
         }
     }()

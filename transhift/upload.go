@@ -15,8 +15,8 @@ func Upload(c *cli.Context) {
     downloadPeer := DownloadPeer{}
     resCh := downloadPeer.ProtocolResponseChannel()
 
-    upHandleConnect(downloadPeer, peerHost)
-    upHandlePasswordHash(downloadPeer, password)
+    upHandleConnect(&downloadPeer, peerHost)
+    upHandlePasswordHash(&downloadPeer, password)
 
     ok := (<- resCh) == PasswordMatch
 
@@ -27,11 +27,11 @@ func Upload(c *cli.Context) {
         return
     }
 
-    ok, file, fileInfo, checksum := upHandleFileInfo(downloadPeer, filePath)
+    ok, file, fileInfo, checksum := upHandleFileInfo(&downloadPeer, filePath)
 
     if ! ok { return }
 
-    if ok := upHandleFileChunks(downloadPeer, file, fileInfo, checksum); ! ok { return }
+    if ok := upHandleFileChunks(&downloadPeer, file, fileInfo, checksum); ! ok { return }
 }
 
 func upHandleConnect(downloadPeer *DownloadPeer, peerHost string) {
@@ -45,7 +45,7 @@ func upHandlePasswordHash(downloadPeer *DownloadPeer, password string) {
     downloadPeer.SendPasswordHash(password)
 }
 
-func upHandleFileInfo(downloadPeer *DownloadPeer, filePath string) (ok bool, os.File, os.FileInfo, checksum []byte) {
+func upHandleFileInfo(downloadPeer *DownloadPeer, filePath string) (ok bool, file os.File, fileInfo os.FileInfo, checksum []byte) {
     fmt.Print("Sending file info... ")
     file, err := os.Open(filePath)
 
@@ -61,7 +61,7 @@ func upHandleFileInfo(downloadPeer *DownloadPeer, filePath string) (ok bool, os.
         return false
     }
 
-    fileInfo, err := file.Stat()
+    fileInfo, err = file.Stat()
 
     if err != nil {
         fmt.Println("error: ", err)
