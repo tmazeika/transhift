@@ -164,7 +164,7 @@ func dlHandleFileChunks(uploadPeer *UploadPeer, destination string, fileInfo *Up
 
     ch := uploadPeer.ReceiveFileChunks(chunkSize)
 
-    updateProgress(&float64(totalRead), fileInfo.size)
+    updateProgress(&float64(totalRead), float64(fileInfo.size), &true)
 
     // while the total amount of bytes we've read is less than the file's
     // size...
