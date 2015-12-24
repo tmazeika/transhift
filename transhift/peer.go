@@ -150,7 +150,11 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan []byte {
 
             var chunkRead uint64
 
+            // for as long as we haven't finished filling up the buffer for the
+            // chunk...
             for chunkRead < adjustedChunkSize {
+                // read bytes from the connection starting at the last position
+                // we read
                 dataRead, err := d.reader.Read(dataBuff[chunkRead:])
 
                 if err != nil {
@@ -158,6 +162,7 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan []byte {
                     return
                 }
 
+                // add to the bytes read of this chunk whatever was just read
                 chunkRead += dataRead
             }
         }
