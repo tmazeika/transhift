@@ -13,8 +13,7 @@ import (
 )
 
 const (
-    port         uint16 = 50977
-    chunkSize    uint16 = 1024
+    chunkSize uint16 = 1024
 )
 
 type PortMapping struct {
@@ -95,19 +94,19 @@ func Download(c *cli.Context) {
 
     uploadPeer := UploadPeer{}
 
-    if ok := handleConnect(uploadPeer, port); ! ok { return }
+    if ok := dlHandleConnect(uploadPeer, port); ! ok { return }
 
-    if ok := handlePassword(uploadPeer, password); ! ok { return }
+    if ok := dlHandlePassword(uploadPeer, password); ! ok { return }
 
-    fileInfo := handleFileInfo(uploadPeer)
-    ok, file := handleFileChunks(uploadPeer, destination, fileInfo)
+    fileInfo := dlHandleFileInfo(uploadPeer)
+    ok, file := dlHandleFileChunks(uploadPeer, destination, fileInfo)
 
     if ! ok { return }
 
-    if ok := handleVerification(fileInfo, file); ! ok { return }
+    if ok := dlHandleVerification(fileInfo, file); ! ok { return }
 }
 
-func handleConnect(uploadPeer *UploadPeer, port uint16) (ok bool) {
+func dlHandleConnect(uploadPeer *UploadPeer, port uint16) (ok bool) {
     fmt.Print("Listening for peer... ")
 
     if err := uploadPeer.Connect(port); err != nil {
@@ -118,7 +117,7 @@ func handleConnect(uploadPeer *UploadPeer, port uint16) (ok bool) {
     return true
 }
 
-func handlePassword(uploadPeer *UploadPeer, password string) (ok bool) {
+func dlHandlePassword(uploadPeer *UploadPeer, password string) (ok bool) {
     fmt.Print("Receiving password... ")
 
     passwordHash := stringChecksum(password)
@@ -136,7 +135,7 @@ func handlePassword(uploadPeer *UploadPeer, password string) (ok bool) {
     }
 }
 
-func handleFileInfo(uploadPeer *UploadPeer) UploadPeerFileInfo {
+func dlHandleFileInfo(uploadPeer *UploadPeer) UploadPeerFileInfo {
     fmt.Print("Receiving file info... ")
 
     info := uploadPeer.ReceiveFileInfo()
@@ -145,7 +144,7 @@ func handleFileInfo(uploadPeer *UploadPeer) UploadPeerFileInfo {
     return info
 }
 
-func handleFileChunks(uploadPeer *UploadPeer, destination string, fileInfo *UploadPeerFileInfo) (ok bool, os.File) {
+func dlHandleFileChunks(uploadPeer *UploadPeer, destination string, fileInfo *UploadPeerFileInfo) (ok bool, os.File) {
     if destination == "" {
         destination = fileInfo.name
     }
@@ -191,7 +190,7 @@ func handleFileChunks(uploadPeer *UploadPeer, destination string, fileInfo *Uplo
     return true, file
 }
 
-func handleVerification(fileInfo *UploadPeerFileInfo, file *os.File) (ok bool) {
+func dlHandleVerification(fileInfo *UploadPeerFileInfo, file *os.File) (ok bool) {
     fmt.Print("Verifying checksum... ")
 
     fileHash, err := fileChecksum(file)

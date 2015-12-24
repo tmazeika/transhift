@@ -6,6 +6,10 @@ import (
     "time"
 )
 
+const (
+    port uint16 = 50977
+)
+
 func formatSize(size float64) string {
     if size < 1000 {
         return fmt.Sprintf("%d B", size)

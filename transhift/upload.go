@@ -12,7 +12,62 @@ import (
 )
 
 func Upload(c *cli.Context) {
-    connect(c.Args()[0], c.Args()[1], c.Args()[2])
+    peerHost := c.Args()[0]
+    password := c.Args()[1]
+    filePath := c.Args()[2]
+
+    downloadPeer := DownloadPeer{}
+    resCh := downloadPeer.ProtocolResponseChannel()
+
+    upHandleConnect(downloadPeer, peerHost)
+    upHandlePasswordHash(downloadPeer, password)
+
+    ok := (<- resCh) == PasswordMatch
+
+    if ok {
+        fmt.Println("match")
+    } else {
+        fmt.Println("mismatch. Retry with the correct password!")
+        return
+    }
+
+    if ok := upHandleFileInfo(downloadPeer, filePath); ! ok { return }
+}
+
+func upHandleConnect(downloadPeer *DownloadPeer, peerHost string) {
+    fmt.Printf("Connecting to %s... ", peerHost)
+    downloadPeer.Connect(peerHost, port)
+    fmt.Print("done")
+}
+
+func upHandlePasswordHash(downloadPeer *DownloadPeer, password string) {
+    fmt.Print("Sending password... ")
+    downloadPeer.SendPasswordHash(password)
+}
+
+func upHandleFileInfo(downloadPeer *DownloadPeer, filePath string) (ok bool) {
+    fmt.Print("Sending file info... ")
+    file, err := os.Open(filePath)
+
+    if err != nil {
+        fmt.Println("error: ", err)
+        return false
+    }
+
+    fileHash, err := fileChecksum(file)
+
+    if err != nil {
+        fmt.Println("error: ", err)
+    }
+
+    fileInfo, err := file.Stat()
+
+    if err != nil {
+        fmt.Println("error: ", err)
+    }
+
+    downloadPeer.SendFileInfo(fileInfo.Name(), uint64(fileInfo.Size()), fileHash)
+    return true
 }
 
 func connect(peer, password, filePath string) {
