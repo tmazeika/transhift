@@ -21,7 +21,14 @@ const (
     PasswordMatch    = byte(iota)
 
     // from either endpoint; indicates the user has stopped sending/receiving
+    // - download peer will send this via SendProtocolResponse() when needed,
+    //   and the upload peer should listen
+    // - upload peer will send this OR Continue as the first byte of every chunk
     Terminated       = byte(iota)
+
+    // from upload peer; this OR Terminated is sent as the first byte of every
+    // chunk
+    Continue         = byte(iota)
 )
 
 func portStr(port uint16) string {
@@ -162,8 +169,13 @@ func (d *UploadPeer) ReceiveFileInfo() (name string, size uint64, checksum []byt
     return
 }
 
-func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan []byte {
-    ch := make(chan []byte)
+type FileChunk struct {
+    status bool
+    data   []byte
+}
+
+func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan FileChunk {
+    ch := make(chan FileChunk)
 
     var totalRead uint64
 
@@ -189,7 +201,7 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan []byte {
                 dataRead, err := d.reader.Read(dataBuff[chunkRead:])
 
                 if err != nil {
-                    fmt.Fprintln(os.Stderr, "Error reading line: ", err)
+                    fmt.Fprintln(os.Stderr, "Error reading bytes: ", err)
                     return
                 }
 
@@ -198,7 +210,10 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan []byte {
             }
 
             // the chunk is done being read, so off to get handled...
-            ch <- dataBuff
+            ch <- FileChunk{
+                status: dataBuff[0] == Continue,
+                data:   dataBuff[1:],
+            }
         }
     }()
 
