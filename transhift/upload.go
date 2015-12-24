@@ -6,16 +6,10 @@ import (
     "os"
 //    "encoding/hex"
     "time"
+    "bytes"
 )
 
 func Upload(c *cli.Context) {
-    ticker := time.Tick(time.Second)
-    for i := 10; i > 0; i-- {
-        <-ticker
-        fmt.Printf("\r %d/10", i)
-    }
-    fmt.Println("\nAll is said and done.")
-
     host := c.Args()[0]
     pass := c.Args()[1]
     filePath := c.Args()[2]
@@ -42,13 +36,9 @@ func Upload(c *cli.Context) {
     resCh := downloadPeer.ProtocolResponseChannel()
 
     downloadPeer.SendMetaInfo(&MetaInfo{
-        // passHash
         passHash: stringChecksum(pass),
-        // fileName
         fileName: fileInfo.Name(),
-        // fileSize
         fileSize: uint64(fileInfo.Size()),
-        // fileHash
         fileHash: fileChecksum(file),
     })
 
@@ -59,35 +49,80 @@ func Upload(c *cli.Context) {
 
     fmt.Println("done")
 
-    fmt.Println("Sending")
-}/*
+    var currentBytes uint64
+    totalBytes := uint64(fileInfo.Size())
+    progressBarStopCh := showProgressBar(&currentBytes, totalBytes)
 
-func upHandleFileChunks(downloadPeer *DownloadPeer, upFileInfo *UpFileInfo) (ok bool) {
-    fmt.Printf("Sending file '%s' with a size of %s (SHA-256 %s) to %s\n",
-        upFileInfo.file.Name(), formatSize(float64(upFileInfo.fileInfo.Size())), hex.EncodeToString(upFileInfo.checksum),
-        downloadPeer.conn.RemoteAddr().String())
-
-    var totalWrote uint64
-    updateProgressStopSignal := false
-
-    updateProgress(&totalWrote, uint64(upFileInfo.fileInfo.Size()), &updateProgressStopSignal)
-
-    for totalWrote < uint64(upFileInfo.fileInfo.Size()) {
-        fileChunk := make([]byte, chunkSize)
-        fileChunkRead, err := upFileInfo.file.ReadAt(fileChunk, int64(totalWrote))
+    for currentBytes < totalBytes {
+        chunkBuff := make([]byte, chunkSize)
+        chunkBuffSize, err := file.ReadAt(chunkBuff, int64(totalBytes))
 
         if err != nil {
-            fmt.Println("Error: ", err)
-            updateProgressStopSignal = true
-            return false
+            progressBarStopCh <- false
+            fmt.Println('\n', err)
+            os.Exit(1)
         }
 
-        downloadPeer.SendFileChunk(fileChunk)
+        downloadPeer.SendFileChunk(&FileChunk{
+            good: true,
+            data: chunkBuff[:chunkBuffSize],
+        })
 
-        totalWrote += uint64(fileChunkRead)
+        currentBytes += uint64(chunkBuffSize)
     }
 
-    fmt.Println("Done!")
-    return true
+    progressBarStopCh <- true
+
+    fmt.Println("\nUploaded")
+    fmt.Println("Awaiting peer response... ")
+
+    if <- resCh == ChecksumMismatch {
+        fmt.Fprintln(os.Stderr, "checksum mismatch; the peer's file may be corrupt and/or incomplete")
+        os.Exit(1)
+    }
+
+    fmt.Println("done")
 }
-*/
+
+func showProgressBar(current *uint64, total uint64) (stopCh chan bool) {
+    stopCh = make(chan bool)
+    stop := false
+
+    update := func() {
+        var buff bytes.Buffer
+        percent := float64(*current) / float64(total)
+
+        fmt.Fprintf(buff, "\r%.f%% [", percent)
+
+        const BarSize = float64(50)
+
+        for i := float64(0); i < percent * BarSize; i++ {
+            buff.WriteRune('=')
+        }
+
+        for i := float64(0); i < BarSize - percent * BarSize; i++ {
+            buff.WriteRune(' ')
+        }
+
+        fmt.Fprintf(buff, "] %s/%s", formatSize(float64(*current)), formatSize(float64(total)))
+        fmt.Print(buff.String())
+    }
+
+    go func() {
+        for ! stop && current < total {
+            update()
+            time.Sleep(time.Second)
+        }
+    }()
+
+    go func() {
+        updateAfterStop := <- stopCh
+        stop = true
+
+        if updateAfterStop {
+            update()
+        }
+    }()
+
+    return
+}

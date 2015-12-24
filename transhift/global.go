@@ -10,8 +10,8 @@ const (
     port uint16 = 50977
 )
 
-func formatSize(size float64) string {
-    if size < 1000.0 {
+func formatSize(size uint64) string {
+    if size < 1000 {
         return fmt.Sprintf("%d B", size)
     } else if size < math.Pow(1000, 2) {
         return fmt.Sprintf("%.2f KB", size / 1000.0)

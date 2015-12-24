@@ -20,13 +20,21 @@ const (
     // process should continue
     PasswordMatch    = byte(iota)
 
+    // from download peer; indicates the received file's checksum did not match
+    // the checksum sent from the upload peer
+    ChecksumMismatch = byte(iota)
+
+    // from download peer; indicates the received file's checksum matched the
+    // checksum sent from the upload peer
+    ChecksumMatch    = byte(iota)
+
     // from either endpoint; indicates the user has stopped sending/receiving
     // - download peer will send this via SendProtocolResponse() when needed,
     //   and the upload peer should listen
     // - upload peer will send this OR Continue as the first byte of every chunk
-    Terminated       = byte(iota)
+    Terminate        = byte(iota)
 
-    // from upload peer; this OR Terminated is sent as the first byte of every
+    // from upload peer; this OR Terminate is sent as the first byte of every
     // chunk
     Continue         = byte(iota)
 )
@@ -89,8 +97,16 @@ func (d *DownloadPeer) SendMetaInfo(metaInfo *MetaInfo) {
     d.writer.Flush()
 }
 
-func (d *DownloadPeer) SendFileChunk(chunk []byte) {
-    d.writer.Write(chunk)
+func (d *DownloadPeer) SendFileChunk(fileChunk *FileChunk) {
+    // good
+    if fileChunk.good {
+        d.writer.WriteByte(Continue)
+    } else {
+        d.writer.WriteByte(Terminate)
+    }
+    // data
+    d.writer.Write(fileChunk.data)
+
     d.writer.Flush()
 }
 
