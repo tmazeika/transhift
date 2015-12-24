@@ -6,7 +6,13 @@ import (
     "time"
     "log"
     "bufio"
+    "strconv"
+    "os"
 )
+
+func portStr(port uint16) string {
+    return strconv.Itoa(int(port))
+}
 
 type DownloadPeer struct {
     conn net.Conn
@@ -14,11 +20,11 @@ type DownloadPeer struct {
     ch chan []byte
 }
 
-func (d *DownloadPeer) Connect(host string, port string) {
-    fmt.Printf("Dialing %s... ", host)
+func (d *DownloadPeer) Connect(host string, port uint16) {
+    fmt.Printf("Dialing %s:%d... ", host, port)
 
     for d.conn == nil {
-        d.conn = net.Dial("tcp", net.JoinHostPort(host, port))
+        d.conn, _ = net.Dial("tcp", net.JoinHostPort(host, portStr(port)))
 
         if d.conn == nil {
             time.Sleep(time.Second)
@@ -39,7 +45,8 @@ func (d *DownloadPeer) Channel() chan []byte {
             data, err := reader.ReadBytes('\n')
 
             if err != nil {
-                log.Fatalln("Error reading line: ", err)
+                d.conn.Close()
+                fmt.Fprintln(os.Stderr, "Error reading line: ", err)
             }
 
             d.ch <- data
@@ -62,4 +69,31 @@ func (d *DownloadPeer) SendFileInfo(name string, size uint64) {
 
 func (d *DownloadPeer) SendFileChunk(chunk []byte) {
     d.conn.Write(chunk)
+}
+
+type UploadPeer struct {
+    conn net.Conn
+
+    ch chan []byte
+}
+
+func (d *UploadPeer) Connect(port uint16) error {
+    fmt.Printf("Listening on port %d... ", port)
+
+    var err error
+    listener, err := net.Listen("tcp", net.JoinHostPort("", portStr(port)))
+
+    if err != nil {
+        return err
+    }
+
+    d.conn, err = listener.Accept()
+
+    if err != nil {
+        return err
+    }
+
+    fmt.Println("connected")
+
+    return nil
 }

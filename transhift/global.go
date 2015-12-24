@@ -18,10 +18,6 @@ const (
     passwordBad  byte = 1
 )
 
-var (
-    portStr = fmt.Sprint(port)
-)
-
 func check(e error) {
     if e != nil {
         panic(e)
