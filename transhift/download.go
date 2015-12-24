@@ -10,6 +10,8 @@ import (
 //    "path/filepath"
     "github.com/huin/goupnp/dcps/internetgateway2"
     "math"
+    "os"
+    "bytes"
 )
 
 const (
@@ -89,138 +91,82 @@ func (p *PortMapping) Remove() {
 }
 
 func Download(c *cli.Context) {
-//    password := c.Args()[0]
-//    destination := c.String("destination")
-//
-//    portMapping := PortMapping{port: port}
-//    portMapping.Add()
-//    defer portMapping.Remove()
-//
-//    uploadPeer := UploadPeer{}
-//
-//    if ok := dlHandleConnect(&uploadPeer, port); ! ok { return }
-//
-//    if ok := dlHandlePassword(&uploadPeer, password); ! ok { return }
-//
-//    fileInfo := dlHandleFileInfo(&uploadPeer)
-//    ok, file := dlHandleFileChunks(&uploadPeer, destination, fileInfo)
-//
-//    if ! ok { return }
-//
-//    if ok := dlHandleVerification(fileInfo, file); ! ok { return }
-}
+    pass := c.Args()[0]
+    destination := c.String("destination")
 
-/*
-func dlHandleConnect(uploadPeer *UploadPeer, port uint16) (ok bool) {
+    portMapping := PortMapping{port: port}
+    portMapping.Add()
+    defer portMapping.Remove()
+
+    uploadPeer := UploadPeer{}
+
     fmt.Print("Listening for peer... ")
 
     if err := uploadPeer.Connect(port); err != nil {
-        return false
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
     }
 
-    fmt.Println("connected")
-    return true
-}
+    fileChunkCh := uploadPeer.ReceiveFileChunks(chunkSize)
 
-func dlHandlePassword(uploadPeer *UploadPeer, password string) (ok bool) {
-    fmt.Print("Receiving password... ")
+    uploadPeer.ReceiveMetaInfo()
 
-    passwordHash := stringChecksum(password)
-    peerPasswordHash := uploadPeer.ReceivePasswordHash()
+    passHash := stringChecksum(pass)
 
-    if bytes.Equal(passwordHash, peerPasswordHash) {
-        fmt.Println("match")
+    if bytes.Equal(passHash, uploadPeer.metaInfo.passHash) {
         uploadPeer.SendProtocolResponse(PasswordMatch)
-        return true
     } else {
-        fmt.Fprintln(os.Stderr, "peer sent wrong password")
         uploadPeer.SendProtocolResponse(PasswordMismatch)
-//        uploadPeer.Close()
-        return false
+        fmt.Fprintln(os.Stderr, "password mismatch")
+        os.Exit(1)
     }
-}
-
-func dlHandleFileInfo(uploadPeer *UploadPeer) *UploadPeerFileInfo {
-    fmt.Print("Receiving file info... ")
-
-    info := uploadPeer.ReceiveFileInfo()
 
     fmt.Println("done")
-    return &info
-}
 
-func dlHandleFileChunks(uploadPeer *UploadPeer, destination string, fileInfo *UploadPeerFileInfo) (ok bool, file *os.File) {
     if destination == "" {
-        destination = fileInfo.name
+        destination = uploadPeer.metaInfo.fileName
     }
 
     file, err := os.Create(destination)
 
     if err != nil {
-        fmt.Fprintln(os.Stderr, "Error: ", err)
-        return false, nil
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
     }
 
-    absPath, err := filepath.Abs(destination)
+    var currentBytes uint64
+    totalBytes := uint64(uploadPeer.metaInfo.fileSize)
+    progressBarStopCh := showProgressBar(&currentBytes, totalBytes)
 
-    if err != nil {
-        fmt.Fprintln(os.Stderr, "Error: ", err)
-        return false, nil
-    }
+    for currentBytes < totalBytes {
+        fileChunk := <- fileChunkCh
 
-    fmt.Printf("Downloading file '%s' with a size of %s (SHA-256 %s) to %s\n",
-        fileInfo.name, formatSize(float64(fileInfo.size)),
-        hex.EncodeToString(fileInfo.checksum), absPath)
-
-    var totalRead uint64
-
-    ch := uploadPeer.ReceiveFileChunks(chunkSize)
-    updateProgressStopSignal := true
-
-    updateProgress(&totalRead, fileInfo.size, &updateProgressStopSignal)
-
-    // while the total amount of bytes we've read is less than the file's
-    // size...
-    for totalRead < fileInfo.size {
-        fileChunk := <- ch
-
-        // add to the total amount of bytes read whatever we just read from the
-        // peer
-        totalRead += uint64(len(fileChunk.data))
-
-        // the peer wants to disconnect
         if ! fileChunk.good {
+            progressBarStopCh <- false
             fmt.Fprintln(os.Stderr, "Peer stopped sending file, therefore your " +
                 "copy cannot be verified and may be corrupt and/or incomplete. " +
-                "You should (probably) delete the incomplete file: ", absPath)
-            return false, nil
+                "You should (probably) delete the incomplete file: ", destination)
+            os.Exit(1)
         }
 
-        file.WriteAt(fileChunk.data, int64(totalRead))
+        file.WriteAt(fileChunk.data, currentBytes)
+        currentBytes += uint64(len(fileChunk.data))
     }
 
-    fmt.Printf("Done! Wrote: %s\n", absPath)
-    return true, file
+    progressBarStopCh <- true
+
+    fmt.Println("Downloaded")
+
+    fmt.Print("Verifying file... ")
+    fileHash := fileChecksum(file)
+
+    if bytes.Equal(fileHash, uploadPeer.metaInfo.fileHash) {
+        uploadPeer.SendProtocolResponse(ChecksumMatch)
+    } else {
+        uploadPeer.SendProtocolResponse(ChecksumMismatch)
+        fmt.Fprintln(os.Stderr, "checksum mismatch; the peer's file may be corrupt and/or incomplete")
+        os.Exit(1)
+    }
+
+    fmt.Println("done")
 }
-
-func dlHandleVerification(fileInfo *UploadPeerFileInfo, file *os.File) (ok bool) {
-    fmt.Print("Verifying checksum... ")
-
-    fileHash, err := fileChecksum(file)
-
-    if err != nil {
-        fmt.Print("error: ", err)
-        return false
-    }
-
-    if bytes.Equal(fileHash, fileInfo.checksum) {
-        fmt.Println("match")
-        return true
-    }
-
-    fmt.Println("mismatch. The file may have been corrupted during transport. Try " +
-        "asking for the file to be sent again!")
-
-    return false
-}
-*/
