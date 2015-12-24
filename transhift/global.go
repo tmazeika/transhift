@@ -11,7 +11,7 @@ const (
 )
 
 func formatSize(size float64) string {
-    if size < 1000 {
+    if size < 1000.0 {
         return fmt.Sprintf("%d B", size)
     } else if size < math.Pow(1000, 2) {
         return fmt.Sprintf("%.2f KB", size / 1000.0)

@@ -53,8 +53,6 @@ type DownloadPeer struct {
 }
 
 func (d *DownloadPeer) Connect(host string, port uint16) {
-    fmt.Printf("Dialing %s:%d... ", host, port)
-
     for d.conn == nil {
         d.conn, _ = net.Dial("tcp", net.JoinHostPort(host, portStr(port)))
 
@@ -64,13 +62,12 @@ func (d *DownloadPeer) Connect(host string, port uint16) {
     }
 
     d.writer = *bufio.NewWriter(d.conn)
-
-    fmt.Println("connected")
 }
 
 func (d *DownloadPeer) SendPasswordHash(password string) {
     d.writer.Write(stringChecksum(password))
     d.writer.WriteRune('\n')
+    d.writer.Flush()
 }
 
 func (d *DownloadPeer) SendFileInfo(name string, size uint64, checksum []byte) {
@@ -84,10 +81,12 @@ func (d *DownloadPeer) SendFileInfo(name string, size uint64, checksum []byte) {
     // checksum
     d.writer.Write(checksum)
     d.writer.WriteRune('\n')
+    d.writer.Flush()
 }
 
 func (d *DownloadPeer) SendFileChunk(chunk []byte) {
     d.writer.Write(chunk)
+    d.writer.Flush()
 }
 
 func (d *DownloadPeer) ProtocolResponseChannel() chan byte {
@@ -124,8 +123,6 @@ type UploadPeer struct {
 }
 
 func (d *UploadPeer) Connect(port uint16) error {
-    fmt.Printf("Listening on port %d... ", port)
-
     listener, err := net.Listen("tcp", net.JoinHostPort("", portStr(port)))
 
     if err != nil {
@@ -147,16 +144,18 @@ func (d *UploadPeer) Connect(port uint16) error {
             // read line from connection up to NL
             data, err := d.reader.ReadBytes('\n')
 
+            if len(data) <= 1 {
+                continue
+            }
+
             if err != nil {
                 fmt.Fprintln(os.Stderr, "Error reading line: ", err)
                 break
             }
 
-            d.in <- data
+            d.in <- data[:len(data) - 1]
         }
     }()
-
-    fmt.Println("connected")
 
     return nil
 }
@@ -236,6 +235,7 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan FileChunk {
 
 func (d *UploadPeer) SendProtocolResponse(res byte) {
     d.writer.WriteByte(res)
+    d.writer.Flush()
 }
 
 func (d *UploadPeer) Close() {

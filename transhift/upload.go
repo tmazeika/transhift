@@ -13,10 +13,11 @@ func Upload(c *cli.Context) {
     filePath := c.Args()[2]
 
     downloadPeer := DownloadPeer{}
-    resCh := downloadPeer.ProtocolResponseChannel()
 
     upHandleConnect(&downloadPeer, peerHost)
     upHandlePasswordHash(&downloadPeer, password)
+
+    resCh := downloadPeer.ProtocolResponseChannel()
 
     ok := (<- resCh) == PasswordMatch
 
@@ -37,7 +38,7 @@ func Upload(c *cli.Context) {
 func upHandleConnect(downloadPeer *DownloadPeer, peerHost string) {
     fmt.Printf("Connecting to %s... ", peerHost)
     downloadPeer.Connect(peerHost, port)
-    fmt.Print("done")
+    fmt.Println("done")
 }
 
 func upHandlePasswordHash(downloadPeer *DownloadPeer, password string) {

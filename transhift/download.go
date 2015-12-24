@@ -92,6 +92,10 @@ func Download(c *cli.Context) {
     password := c.Args()[0]
     destination := c.String("destination")
 
+    portMapping := PortMapping{port: port}
+    portMapping.Add()
+    defer portMapping.Remove()
+
     uploadPeer := UploadPeer{}
 
     if ok := dlHandleConnect(&uploadPeer, port); ! ok { return }
