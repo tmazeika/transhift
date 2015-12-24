@@ -78,7 +78,7 @@ func upHandleFileInfo(downloadPeer *DownloadPeer, filePath string) (ok bool, _ *
         return false, nil
     }
 
-    downloadPeer.SendFileInfo(upFileInfo.file.Name(), uint64(upFileInfo.fileInfo.Size()), upFileInfo.checksum)
+    downloadPeer.SendMetaInfo(upFileInfo.file.Name(), uint64(upFileInfo.fileInfo.Size()), upFileInfo.checksum)
     return true, &upFileInfo
 }
 

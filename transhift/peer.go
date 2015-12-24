@@ -49,7 +49,7 @@ func min(x, y uint64) uint64 {
 
 type DownloadPeer struct {
     conn   net.Conn
-    writer bufio.Writer
+    writer *bufio.Writer
 }
 
 func (d *DownloadPeer) Connect(host string, port uint16) {
@@ -61,26 +61,31 @@ func (d *DownloadPeer) Connect(host string, port uint16) {
         }
     }
 
-    d.writer = *bufio.NewWriter(d.conn)
+    d.writer = bufio.NewWriter(d.conn)
 }
 
-func (d *DownloadPeer) SendPasswordHash(password string) {
-    d.writer.Write(stringChecksum(password))
+type MetaInfo struct {
+    passHash []byte
+    fileName string
+    fileSize uint64
+    fileHash []byte
+}
+
+func (d *DownloadPeer) SendMetaInfo(metaInfo *MetaInfo) {
+    // passHash
+    d.writer.Write(metaInfo.passHash)
+    // fileName
+    d.writer.WriteString(metaInfo.fileName)
     d.writer.WriteRune('\n')
-    d.writer.Flush()
-}
-
-func (d *DownloadPeer) SendFileInfo(name string, size uint64, checksum []byte) {
-    // name
-    fmt.Fprintln(d.conn, name)
-    // size
+    // fileSize
     sizeBuff := make([]byte, 8)
-    binary.BigEndian.PutUint64(sizeBuff, size)
+    binary.BigEndian.PutUint64(sizeBuff, metaInfo.fileSize)
     d.writer.Write(sizeBuff)
     d.writer.WriteRune('\n')
-    // checksum
-    d.writer.Write(checksum)
+    // fileHash
+    d.writer.Write(metaInfo.fileHash)
     d.writer.WriteRune('\n')
+
     d.writer.Flush()
 }
 
@@ -116,10 +121,11 @@ func (d *DownloadPeer) ProtocolResponseChannel() chan byte {
 
 type UploadPeer struct {
     conn     net.Conn
-    reader   bufio.Reader
-    writer   bufio.Writer
+    reader   *bufio.Reader
+    writer   *bufio.Writer
     in       chan []byte
-    fileSize uint64
+
+    metaInfo *MetaInfo
 }
 
 func (d *UploadPeer) Connect(port uint16) error {
@@ -135,8 +141,8 @@ func (d *UploadPeer) Connect(port uint16) error {
         return err
     }
 
-    d.reader = *bufio.NewReader(d.conn)
-    d.writer = *bufio.NewWriter(d.conn)
+    d.reader = bufio.NewReader(d.conn)
+    d.writer = bufio.NewWriter(d.conn)
     d.in = make(chan []byte)
 
     go func() {
@@ -160,26 +166,13 @@ func (d *UploadPeer) Connect(port uint16) error {
     return nil
 }
 
-func (d *UploadPeer) ReceivePasswordHash() []byte {
-    return <- d.in
-}
-
-type UploadPeerFileInfo struct {
-    name     string
-    size     uint64
-    checksum []byte
-}
-
-func (d *UploadPeer) ReceiveFileInfo() UploadPeerFileInfo {
-    info := UploadPeerFileInfo{}
-
-    info.name = string(<- d.in)
-    info.size = binary.BigEndian.Uint64(<- d.in)
-    info.checksum = <- d.in
-
-    d.fileSize = info.size
-
-    return info
+func (d *UploadPeer) ReceiveMetaInfo() {
+    d.metaInfo = &MetaInfo{
+        passHash: <- d.in,
+        fileName: string(<- d.in),
+        fileSize: binary.BigEndian.Uint64(<- d.in),
+        fileHash: <- d.in,
+    }
 }
 
 type FileChunk struct {
@@ -187,19 +180,19 @@ type FileChunk struct {
     data []byte
 }
 
-func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan FileChunk {
-    ch := make(chan FileChunk)
+func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) (ch chan FileChunk) {
+    ch = make(chan FileChunk)
 
     var totalRead uint64
 
     go func() {
         // for as long as the total amount of bytes read is less than the file
         // size...
-        for totalRead < d.fileSize {
+        for totalRead < d.metaInfo.fileSize {
             // this is the chunk size we'll actually be using; use either the
             // given chunk size or the number of bytes left until the end of the
             // file, whichever is most restrictive (smaller)
-            adjustedChunkSize := min(d.fileSize - totalRead, chunkSize)
+            adjustedChunkSize := min(d.metaInfo.fileSize - totalRead, chunkSize)
 
             // make a new buffer to hold the bytes for this chunk
             dataBuff := make([]byte, adjustedChunkSize)
@@ -222,15 +215,14 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan FileChunk {
                 chunkRead += uint64(dataRead)
             }
 
-            // the chunk is done being read, so off to get handled...
             ch <- FileChunk{
                 good: dataBuff[0] == Continue,
-                data:   dataBuff[1:],
+                data: dataBuff[1:],
             }
         }
     }()
 
-    return ch
+    return
 }
 
 func (d *UploadPeer) SendProtocolResponse(res byte) {
@@ -239,5 +231,5 @@ func (d *UploadPeer) SendProtocolResponse(res byte) {
 }
 
 func (d *UploadPeer) Close() {
-//    d.conn.Close()
+    d.conn.Close()
 }
