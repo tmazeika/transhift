@@ -6,8 +6,8 @@ import (
     "io"
 )
 
-func fileChecksum(file string) ([]byte, error) {
-    file, err := os.Open(file)
+func fileChecksum(filePath string) ([]byte, error) {
+    file, err := os.Open(filePath)
 
     if err != nil {
         return nil, err
@@ -22,7 +22,7 @@ func fileChecksum(file string) ([]byte, error) {
         return nil, err
     }
 
-    return hash.Sum(nil);
+    return hash.Sum(nil), nil;
 }
 
 func stringChecksum(data string) []byte {

@@ -48,7 +48,8 @@ func min(x, y uint64) uint64 {
 // ************************************************************************** //
 
 type DownloadPeer struct {
-    conn net.Conn
+    conn   net.Conn
+    writer bufio.Writer
 }
 
 func (d *DownloadPeer) Connect(host string, port uint16) {
@@ -62,11 +63,14 @@ func (d *DownloadPeer) Connect(host string, port uint16) {
         }
     }
 
+    d.writer = bufio.NewWriter(d.conn)
+
     fmt.Println("connected")
 }
 
 func (d *DownloadPeer) SendPasswordHash(password string) {
-    fmt.Fprintln(d.conn, stringChecksum(password))
+    d.writer.Write(stringChecksum(password))
+    d.writer.WriteRune('\n')
 }
 
 func (d *DownloadPeer) SendFileInfo(name string, size uint64, checksum []byte) {
@@ -75,15 +79,15 @@ func (d *DownloadPeer) SendFileInfo(name string, size uint64, checksum []byte) {
     // size
     sizeBuff := make([]byte, 8)
     binary.BigEndian.PutUint64(sizeBuff, size)
-    d.conn.Write(sizeBuff)
-    d.conn.Write(byte('\n'))
+    d.writer.Write(sizeBuff)
+    d.writer.WriteRune('\n')
     // checksum
-    d.conn.Write(checksum)
-    d.conn.Write(byte('\n'))
+    d.writer.Write(checksum)
+    d.writer.WriteRune('\n')
 }
 
 func (d *DownloadPeer) SendFileChunk(chunk []byte) {
-    d.conn.Write(chunk)
+    d.writer.Write(chunk)
 }
 
 func (d *DownloadPeer) ProtocolResponseChannel() chan byte {
