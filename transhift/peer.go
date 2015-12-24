@@ -57,6 +57,7 @@ func min(x, y uint64) uint64 {
 
 type DownloadPeer struct {
     conn   net.Conn
+    reader *bufio.Reader
     writer *bufio.Writer
 }
 
@@ -65,11 +66,13 @@ func (d *DownloadPeer) Connect(host string, port uint16) {
         d.conn, _ = net.Dial("tcp", net.JoinHostPort(host, portStr(port)))
 
         if d.conn == nil {
+            fmt.Print(".")
             time.Sleep(time.Second)
         }
     }
 
     d.writer = bufio.NewWriter(d.conn)
+    d.reader = bufio.NewReader(d.conn)
 }
 
 type MetaInfo struct {
@@ -82,6 +85,7 @@ type MetaInfo struct {
 func (d *DownloadPeer) SendMetaInfo(metaInfo *MetaInfo) {
     // passHash
     d.writer.Write(metaInfo.passHash)
+    d.writer.WriteRune('\n')
     // fileName
     d.writer.WriteString(metaInfo.fileName)
     d.writer.WriteRune('\n')
@@ -117,7 +121,7 @@ func (d *DownloadPeer) ProtocolResponseChannel() chan byte {
         for {
             // read a single byte
             dataBuff := make([]byte, 1)
-            _, err := d.conn.Read(dataBuff)
+            _, err := d.reader.Read(dataBuff)
 
             if err != nil {
                 fmt.Fprintln(os.Stderr, "Error reading byte: ", err)
@@ -235,6 +239,8 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) (ch chan FileChunk) {
                 good: dataBuff[0] == Continue,
                 data: dataBuff[1:],
             }
+
+            totalRead += chunkRead
         }
     }()
 

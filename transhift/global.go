@@ -3,6 +3,8 @@ package transhift
 import (
     "fmt"
     "math"
+    "bytes"
+    "time"
 )
 
 const (
@@ -25,4 +27,47 @@ func formatSize(size uint64) string {
     } else {
         return fmt.Sprintf("%.2f TB", size / pow(1000, 4))
     }
+}
+
+func showProgressBar(current *uint64, total uint64) (stopCh chan bool) {
+    stopCh = make(chan bool)
+    stop := false
+
+    update := func() {
+        var buff bytes.Buffer
+        percent := float64(*current) / float64(total)
+
+        buff.WriteString(fmt.Sprintf("\r%.f%% [", percent))
+
+        const BarSize = float64(50)
+
+        for i := float64(0); i < percent * BarSize; i++ {
+            buff.WriteRune('=')
+        }
+
+        for i := float64(0); i < BarSize - percent * BarSize; i++ {
+            buff.WriteRune(' ')
+        }
+
+        buff.WriteString(fmt.Sprintf("] %s/%s", formatSize(*current), formatSize(total)))
+        fmt.Print(buff.String())
+    }
+
+    go func() {
+        for ! stop && *current < total {
+            update()
+            time.Sleep(time.Second)
+        }
+    }()
+
+    go func() {
+        updateAfterStop := <- stopCh
+        stop = true
+
+        if updateAfterStop {
+            update()
+        }
+    }()
+
+    return
 }

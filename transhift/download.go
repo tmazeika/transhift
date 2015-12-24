@@ -107,10 +107,9 @@ func Download(c *cli.Context) {
         os.Exit(1)
     }
 
-    fileChunkCh := uploadPeer.ReceiveFileChunks(chunkSize)
-
     uploadPeer.ReceiveMetaInfo()
 
+    fileChunkCh := uploadPeer.ReceiveFileChunks(chunkSize)
     passHash := stringChecksum(pass)
 
     if bytes.Equal(passHash, uploadPeer.metaInfo.passHash) {
