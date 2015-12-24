@@ -82,13 +82,45 @@ func (p *PortMapping) Add() error {
 
 func (p *PortMapping) Remove() {
     if p.added {
-        p.client.DeletePortMapping("", port, "tcp")
+        p.client.DeletePortMapping("", p.port, "tcp")
         p.added = false
     }
 }
 
 func Download(c *cli.Context) {
-    listen(c.Args()[0], c.String("destination"))
+    password := c.Args()[0]
+    destination := c.String("destination")
+
+    uploadPeer := UploadPeer{}
+
+    if ok := handleConnect(uploadPeer, port); ! ok { return }
+    if ok := handlePassword(uploadPeer, password); ! ok { return }
+}
+
+func handleConnect(uploadPeer *UploadPeer, port uint16) (ok bool) {
+    fmt.Print("Listening for peer... ")
+
+    if err := uploadPeer.Connect(port); err != nil {
+        return false
+    }
+
+    fmt.Println("connected")
+    return true
+}
+
+func handlePassword(uploadPeer *UploadPeer, password string) (ok bool) {
+    fmt.Print("Receiving password... ")
+
+    passwordHash := stringChecksum(password)
+    peerPasswordHash := uploadPeer.ReceivePasswordHash()
+
+    if bytes.Equal(passwordHash, peerPasswordHash) {
+        fmt.Println("match")
+        return true
+    } else {
+        fmt.Fprintln(os.Stderr, "Peer sent wrong password")
+        return false
+    }
 }
 
 func listen(password, fileName string) {

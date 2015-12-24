@@ -161,8 +161,8 @@ func (d *UploadPeer) Connect(port uint16) error {
     return nil
 }
 
-func (d *UploadPeer) ReceivePasswordHash() string {
-    return string(<- d.in)
+func (d *UploadPeer) ReceivePasswordHash() []byte {
+    return <- d.in
 }
 
 func (d *UploadPeer) ReceiveFileInfo() (name string, size uint64, checksum []byte) {
