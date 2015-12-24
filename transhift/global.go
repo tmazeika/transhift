@@ -2,17 +2,8 @@ package transhift
 
 import (
     "fmt"
-    "crypto/sha256"
-    "encoding/hex"
     "math"
     "time"
-    "os"
-    "io"
-)
-
-const (
-    port         uint16 = 50977
-    chunkSize    uint16 = 1024
 )
 
 func formatSize(size float64) string {

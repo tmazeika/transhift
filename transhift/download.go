@@ -4,7 +4,6 @@ import (
     "github.com/codegangsta/cli"
     "net"
     "fmt"
-    "encoding/binary"
     "os"
     "bytes"
     "encoding/hex"
@@ -13,7 +12,10 @@ import (
     "math"
 )
 
-//fmt.Println(hex.EncodeToString(sum))
+const (
+    port         uint16 = 50977
+    chunkSize    uint16 = 1024
+)
 
 type PortMapping struct {
     port   uint16
