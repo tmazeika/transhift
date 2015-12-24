@@ -92,7 +92,7 @@ func showProgressBar(current *uint64, total uint64) (stopCh chan bool) {
         var buff bytes.Buffer
         percent := float64(*current) / float64(total)
 
-        fmt.Fprintf(buff, "\r%.f%% [", percent)
+        buff.WriteString(fmt.Sprintf("\r%.f%% [", percent))
 
         const BarSize = float64(50)
 
@@ -104,12 +104,12 @@ func showProgressBar(current *uint64, total uint64) (stopCh chan bool) {
             buff.WriteRune(' ')
         }
 
-        fmt.Fprintf(buff, "] %s/%s", formatSize(float64(*current)), formatSize(float64(total)))
+        buff.WriteString(fmt.Sprintf("] %s/%s", formatSize(*current), formatSize(total)))
         fmt.Print(buff.String())
     }
 
     go func() {
-        for ! stop && current < total {
+        for ! stop && *current < total {
             update()
             time.Sleep(time.Second)
         }
