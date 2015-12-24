@@ -149,7 +149,7 @@ func Download(c *cli.Context) {
             os.Exit(1)
         }
 
-        file.WriteAt(fileChunk.data, currentBytes)
+        file.WriteAt(fileChunk.data, int64(currentBytes))
         currentBytes += uint64(len(fileChunk.data))
     }
 
