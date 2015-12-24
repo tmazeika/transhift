@@ -16,8 +16,8 @@ func Upload(c *cli.Context) {
     }
     fmt.Println("\nAll is said and done.")
 
-    peerHost := c.Args()[0]
-    password := c.Args()[1]
+    host := c.Args()[0]
+    pass := c.Args()[1]
     filePath := c.Args()[2]
 
     downloadPeer := &DownloadPeer{}
@@ -36,14 +36,14 @@ func Upload(c *cli.Context) {
         os.Exit(1)
     }
 
-    fmt.Printf("Connecting to %s... ", peerHost)
-    downloadPeer.Connect(peerHost, port)
+    fmt.Printf("Connecting to %s... ", host)
+    downloadPeer.Connect(host, port)
 
     resCh := downloadPeer.ProtocolResponseChannel()
 
     downloadPeer.SendMetaInfo(&MetaInfo{
         // passHash
-        passHash: stringChecksum(password),
+        passHash: stringChecksum(pass),
         // fileName
         fileName: fileInfo.Name(),
         // fileSize
