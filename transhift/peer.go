@@ -50,15 +50,18 @@ func (d *DownloadPeer) Connect(host string, port uint16) {
     fmt.Println("connected")
 }
 
-func (d *DownloadPeer) SendPassword(password string) {
+func (d *DownloadPeer) SendPasswordHash(password string) {
     fmt.Fprintln(d.conn, stringChecksum(password))
 }
 
-func (d *DownloadPeer) SendFileInfo(name string, size uint64) {
+func (d *DownloadPeer) SendFileInfo(name string, size uint64, checksum []byte) {
     // name
     fmt.Fprintln(d.conn, name)
     // size
     fmt.Fprintln(d.conn, size)
+    // checksum
+    d.conn.Write(checksum)
+    d.conn.Write(byte('\n'))
 }
 
 func (d *DownloadPeer) SendFileChunk(chunk []byte) {
@@ -133,14 +136,15 @@ func (d *UploadPeer) Connect(port uint16) error {
     return nil
 }
 
-func (d *UploadPeer) ReceivePassword() string {
+func (d *UploadPeer) ReceivePasswordHash() string {
     return string(<- d.in)
 }
 
-func (d *UploadPeer) ReceiveFileInfo() (name string, size uint64) {
+func (d *UploadPeer) ReceiveFileInfo() (name string, size uint64, checksum []byte) {
     name = string(<- d.in)
     size = binary.BigEndian.Uint64(<- d.in)
     d.fileSize = size
+    checksum = <- d.in
     return
 }
 
