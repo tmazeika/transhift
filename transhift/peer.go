@@ -13,7 +13,6 @@ import (
 // protocol errors
 const (
     PasswordMismatch = byte(iota)
-    ChecksumMismatch = byte(iota)
 )
 
 func portStr(port uint16) string {
@@ -58,7 +57,9 @@ func (d *DownloadPeer) SendFileInfo(name string, size uint64, checksum []byte) {
     // name
     fmt.Fprintln(d.conn, name)
     // size
-    fmt.Fprintln(d.conn, size)
+    sizeBuff := make([]byte, 8)
+    binary.BigEndian.PutUint64(sizeBuff, size)
+    d.conn.Write(sizeBuff)
     // checksum
     d.conn.Write(checksum)
     d.conn.Write(byte('\n'))
@@ -68,7 +69,9 @@ func (d *DownloadPeer) SendFileChunk(chunk []byte) {
     d.conn.Write(chunk)
 }
 
-func (d *DownloadPeer) ProtocolErrorHandler(handler func(byte)) {
+func (d *DownloadPeer) ProtocolErrorChannel() chan byte {
+    ch := make(chan byte)
+
     go func() {
         for {
             // read a single byte
@@ -80,9 +83,11 @@ func (d *DownloadPeer) ProtocolErrorHandler(handler func(byte)) {
                 return
             }
 
-            handler(dataBuff[0])
+            ch <- dataBuff[0]
         }
     }()
+
+    return ch
 }
 
 // ************************************************************************** //
