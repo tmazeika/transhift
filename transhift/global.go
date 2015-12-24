@@ -13,36 +13,7 @@ import (
 const (
     port         uint16 = 50977
     chunkSize    uint16 = 1024
-
-    passwordGood byte = 0
-    passwordBad  byte = 1
 )
-
-func check(e error) {
-    if e != nil {
-        panic(e)
-    }
-}
-
-func checksum(filePath string) []byte {
-    fmt.Print("Calculating SHA-256 checksum... ")
-
-    file, err := os.Open(filePath)
-    check(err)
-    defer file.Close()
-
-    hash := sha256.New()
-
-    _, err = io.Copy(hash, file)
-    check(err)
-
-    sum := hash.Sum(nil)
-
-    // print checksum
-    fmt.Println(hex.EncodeToString(sum))
-
-    return sum;
-}
 
 func formatSize(size float64) string {
     if size < 1000 {

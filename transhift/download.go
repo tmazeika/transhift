@@ -10,22 +10,34 @@ import (
     "encoding/hex"
     "path/filepath"
     "github.com/huin/goupnp/dcps/internetgateway2"
+    "math"
 )
 
-const (
-    sizeOfUint64 = 8
-)
+//fmt.Println(hex.EncodeToString(sum))
 
-func Download(c *cli.Context) {
-    fmt.Print("Preparing for listen... ")
+type PortMapping struct {
+    port   uint16
+    added  bool
+    client internetgateway2.WANIPConnection1
+}
+
+func (p *PortMapping) Add() error {
+    fmt.Printf("Mapping port %d... ", p.port)
 
     var ipStr string
 
-    ifaces, err := net.Interfaces()
-    check(err)
-    for _, i := range ifaces {
+    interfaces, err := net.Interfaces()
+
+    if err != nil {
+        return err
+    }
+
+    for _, i := range interfaces {
         addrs, err := i.Addrs()
-        check(err)
+
+        if err != nil {
+            return err
+        }
 
         for _, addr := range addrs {
             var ip net.IP
@@ -37,24 +49,45 @@ func Download(c *cli.Context) {
                     ip = v.IP
             }
 
-            if (! ip.IsLoopback() && ip.To4() != nil) {
+            if ! ip.IsLoopback() && ip.To4() != nil {
                 ipStr = ip.String()
             }
         }
     }
 
     clients, _, err := internetgateway2.NewWANIPConnection1Clients()
-    check(err)
 
-    if (len(clients) > 0) {
-        err = clients[0].AddPortMapping("", port, "tcp", port, ipStr, true, "Transhift", 0xFFFFFFFF)
-        check(err)
-        fmt.Println("done")
-        defer clients[0].DeletePortMapping("", port, "tcp")
-    } else {
-        fmt.Println("UPnP is either not needed or is disabled; continuing...")
+    if err != nil {
+        return err
     }
 
+    if (len(clients) > 0) {
+        err = clients[0].AddPortMapping("", p.port, "tcp", p.port, ipStr, true, "Transhift", math.MaxUint32)
+
+        if err != nil {
+            return err
+        }
+
+        p.client = clients[0]
+
+        fmt.Println("done")
+        p.added = true
+    } else {
+        fmt.Println("UPnP is not available; continuing...")
+        p.added = false
+    }
+
+    return nil
+}
+
+func (p *PortMapping) Remove() {
+    if p.added {
+        p.client.DeletePortMapping("", port, "tcp")
+        p.added = false
+    }
+}
+
+func Download(c *cli.Context) {
     listen(c.Args()[0], c.String("destination"))
 }
 
