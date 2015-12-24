@@ -14,6 +14,31 @@ func Upload(c *cli.Context) {
 
     downloadPeer := DownloadPeer{}
 
+    file, err := os.Open(filePath)
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Error: ", err)
+        os.Exit(1)
+    }
+
+    fileInfo, err := file.Stat()
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Error: ", err)
+        os.Exit(1)
+    }
+
+    downloadPeer.SendMetaInfo(&MetaInfo{
+        // passHash
+        passHash: stringChecksum(password),
+        // fileName
+        fileName: fileInfo.Name(),
+        // fileSize
+        fileSize: uint64(fileInfo.Size()),
+        // fileHash
+        fileHash: fileChecksum(file),
+    })
+
     upHandleConnect(&downloadPeer, peerHost)
     upHandlePasswordHash(&downloadPeer, password)
 
