@@ -27,11 +27,11 @@ func Upload(c *cli.Context) {
         return
     }
 
-    ok, file, fileInfo, checksum := upHandleFileInfo(&downloadPeer, filePath)
+    ok, upFileInfo := upHandleFileInfo(&downloadPeer, filePath)
 
     if ! ok { return }
 
-    if ok := upHandleFileChunks(&downloadPeer, file, fileInfo, checksum); ! ok { return }
+    if ok := upHandleFileChunks(&downloadPeer, upFileInfo); ! ok { return }
 }
 
 func upHandleConnect(downloadPeer *DownloadPeer, peerHost string) {
@@ -45,46 +45,55 @@ func upHandlePasswordHash(downloadPeer *DownloadPeer, password string) {
     downloadPeer.SendPasswordHash(password)
 }
 
-func upHandleFileInfo(downloadPeer *DownloadPeer, filePath string) (ok bool, file os.File, fileInfo os.FileInfo, checksum []byte) {
-    fmt.Print("Sending file info... ")
-    file, err := os.Open(filePath)
-
-    if err != nil {
-        fmt.Println("error: ", err)
-        return false
-    }
-
-    fileHash, err := fileChecksum(file)
-
-    if err != nil {
-        fmt.Println("error: ", err)
-        return false
-    }
-
-    fileInfo, err = file.Stat()
-
-    if err != nil {
-        fmt.Println("error: ", err)
-        return false
-    }
-
-    downloadPeer.SendFileInfo(fileInfo.Name(), uint64(fileInfo.Size()), fileHash)
-    return true, file, fileInfo, fileHash
+type UpFileInfo struct {
+    file     *os.File
+    fileInfo os.FileInfo
+    checksum []byte
 }
 
-func upHandleFileChunks(downloadPeer *DownloadPeer, file os.File, fileInfo os.FileInfo, checksum []byte) (ok bool) {
+func upHandleFileInfo(downloadPeer *DownloadPeer, filePath string) (ok bool, _ *UpFileInfo) {
+    upFileInfo := UpFileInfo{}
+
+    fmt.Print("Sending file info... ")
+    var err error
+    upFileInfo.file, err = os.Open(filePath)
+
+    if err != nil {
+        fmt.Println("error: ", err)
+        return false, nil
+    }
+
+    upFileInfo.checksum, err = fileChecksum(upFileInfo.file)
+
+    if err != nil {
+        fmt.Println("error: ", err)
+        return false, nil
+    }
+
+    upFileInfo.fileInfo, err = upFileInfo.file.Stat()
+
+    if err != nil {
+        fmt.Println("error: ", err)
+        return false, nil
+    }
+
+    downloadPeer.SendFileInfo(upFileInfo.file.Name(), uint64(upFileInfo.fileInfo.Size()), upFileInfo.checksum)
+    return true, &upFileInfo
+}
+
+func upHandleFileChunks(downloadPeer *DownloadPeer, upFileInfo *UpFileInfo) (ok bool) {
     fmt.Printf("Sending file '%s' with a size of %s (SHA-256 %s) to %s\n",
-        file.Name(), formatSize(fileInfo.Size()), hex.EncodeToString(checksum),
+        upFileInfo.file.Name(), formatSize(float64(upFileInfo.fileInfo.Size())), hex.EncodeToString(upFileInfo.checksum),
         downloadPeer.conn.RemoteAddr().String())
 
     var totalWrote uint64
     updateProgressStopSignal := false
 
-    updateProgress(&float64(totalWrote), float64(fileInfo.Size()), &updateProgressStopSignal)
+    updateProgress(&totalWrote, uint64(upFileInfo.fileInfo.Size()), &updateProgressStopSignal)
 
-    for totalWrote < fileInfo.Size() {
+    for totalWrote < uint64(upFileInfo.fileInfo.Size()) {
         fileChunk := make([]byte, chunkSize)
-        fileChunkRead, err := file.ReadAt(fileChunk, int64(totalWrote))
+        fileChunkRead, err := upFileInfo.file.ReadAt(fileChunk, int64(totalWrote))
 
         if err != nil {
             fmt.Println("Error: ", err)

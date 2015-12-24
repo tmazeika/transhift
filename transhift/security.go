@@ -6,7 +6,7 @@ import (
     "io"
 )
 
-func fileChecksum(file os.File) ([]byte, error) {
+func fileChecksum(file *os.File) ([]byte, error) {
     hash := sha256.New()
 
     if _, err := io.Copy(hash, file); err != nil {

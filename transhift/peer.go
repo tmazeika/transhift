@@ -63,7 +63,7 @@ func (d *DownloadPeer) Connect(host string, port uint16) {
         }
     }
 
-    d.writer = bufio.NewWriter(d.conn)
+    d.writer = *bufio.NewWriter(d.conn)
 
     fmt.Println("connected")
 }
@@ -97,7 +97,7 @@ func (d *DownloadPeer) ProtocolResponseChannel() chan byte {
         for {
             // read a single byte
             dataBuff := make([]byte, 1)
-            _, err := (*d.conn).Read(dataBuff)
+            _, err := d.conn.Read(dataBuff)
 
             if err != nil {
                 fmt.Fprintln(os.Stderr, "Error reading byte: ", err)
@@ -138,8 +138,8 @@ func (d *UploadPeer) Connect(port uint16) error {
         return err
     }
 
-    d.reader = bufio.NewReader(d.conn)
-    d.writer = bufio.NewWriter(d.conn)
+    d.reader = *bufio.NewReader(d.conn)
+    d.writer = *bufio.NewWriter(d.conn)
     d.in = make(chan []byte)
 
     go func() {
@@ -220,7 +220,7 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan FileChunk {
                 }
 
                 // add to the bytes read of this chunk whatever was just read
-                chunkRead += dataRead
+                chunkRead += uint64(dataRead)
             }
 
             // the chunk is done being read, so off to get handled...

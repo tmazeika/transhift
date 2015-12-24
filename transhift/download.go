@@ -201,7 +201,7 @@ func dlHandleFileChunks(uploadPeer *UploadPeer, destination string, fileInfo *Up
 func dlHandleVerification(fileInfo *UploadPeerFileInfo, file *os.File) (ok bool) {
     fmt.Print("Verifying checksum... ")
 
-    fileHash, err := fileChecksum(*file)
+    fileHash, err := fileChecksum(file)
 
     if err != nil {
         fmt.Print("error: ", err)
