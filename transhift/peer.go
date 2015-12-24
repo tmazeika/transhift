@@ -41,7 +41,7 @@ func min(x, y uint64) uint64 {
 // ************************************************************************** //
 
 type DownloadPeer struct {
-    conn   net.Conn
+    conn net.Conn
 }
 
 func (d *DownloadPeer) Connect(host string, port uint16) {
@@ -115,7 +115,6 @@ type UploadPeer struct {
 func (d *UploadPeer) Connect(port uint16) error {
     fmt.Printf("Listening on port %d... ", port)
 
-    var err error
     listener, err := net.Listen("tcp", net.JoinHostPort("", portStr(port)))
 
     if err != nil {
