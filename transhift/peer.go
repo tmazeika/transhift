@@ -34,8 +34,6 @@ func min(x, y uint64) uint64 {
 
 type DownloadPeer struct {
     conn   net.Conn
-    reader bufio.Reader
-    writer bufio.Writer
 }
 
 func (d *DownloadPeer) Connect(host string, port uint16) {
@@ -48,9 +46,6 @@ func (d *DownloadPeer) Connect(host string, port uint16) {
             time.Sleep(time.Second)
         }
     }
-
-    d.reader = bufio.NewReader(d.conn)
-    d.writer = bufio.NewWriter(d.conn)
 
     fmt.Println("connected")
 }
@@ -68,6 +63,23 @@ func (d *DownloadPeer) SendFileInfo(name string, size uint64) {
 
 func (d *DownloadPeer) SendFileChunk(chunk []byte) {
     d.conn.Write(chunk)
+}
+
+func (d *DownloadPeer) ProtocolErrorHandler(handler func(byte)) {
+    go func() {
+        for {
+            // read a single byte
+            dataBuff := make([]byte, 1)
+            _, err := d.conn.Read(dataBuff)
+
+            if err != nil {
+                fmt.Fprintln(os.Stderr, "Error reading byte: ", err)
+                return
+            }
+
+            handler(dataBuff[0])
+        }
+    }()
 }
 
 // ************************************************************************** //
@@ -104,6 +116,7 @@ func (d *UploadPeer) Connect(port uint16) error {
 
     go func() {
         for {
+            // read line from connection up to NL
             data, err := d.reader.ReadBytes('\n')
 
             if err != nil {
@@ -131,9 +144,7 @@ func (d *UploadPeer) ReceiveFileInfo() (name string, size uint64) {
     return
 }
 
-func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan []byte {
-    ch := make(chan []byte)
-
+func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64, handler func([]byte)) {
     var totalRead uint64
 
     go func() {
@@ -165,10 +176,11 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan []byte {
                 // add to the bytes read of this chunk whatever was just read
                 chunkRead += dataRead
             }
+
+            // the chunk is done being read, so off to get handled...
+            handler(dataBuff)
         }
     }()
-
-    return ch
 }
 
 func (d *UploadPeer) SendProtocolError(err byte) {
