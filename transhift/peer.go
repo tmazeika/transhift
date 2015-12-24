@@ -10,9 +10,18 @@ import (
     "encoding/binary"
 )
 
-// protocol errors
+// protocol responses
 const (
+    // from download peer; indicates the sent password was incorrect and the
+    // process should not continue
     PasswordMismatch = byte(iota)
+
+    // from download peer; indicates the sent password was correct and the
+    // process should continue
+    PasswordMatch    = byte(iota)
+
+    // from either endpoint; indicates the user has stopped sending/receiving
+    Terminated       = byte(iota)
 )
 
 func portStr(port uint16) string {
@@ -70,7 +79,7 @@ func (d *DownloadPeer) SendFileChunk(chunk []byte) {
     d.conn.Write(chunk)
 }
 
-func (d *DownloadPeer) ProtocolErrorChannel() chan byte {
+func (d *DownloadPeer) ProtocolResponseChannel() chan byte {
     ch := make(chan byte)
 
     go func() {
@@ -197,6 +206,6 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan []byte {
     return ch
 }
 
-func (d *UploadPeer) SendProtocolError(err byte) {
-    d.writer.WriteByte(err)
+func (d *UploadPeer) SendProtocolResponse(res byte) {
+    d.writer.WriteByte(res)
 }
