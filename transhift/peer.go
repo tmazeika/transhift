@@ -165,17 +165,27 @@ func (d *UploadPeer) ReceivePasswordHash() []byte {
     return <- d.in
 }
 
-func (d *UploadPeer) ReceiveFileInfo() (name string, size uint64, checksum []byte) {
-    name = string(<- d.in)
-    size = binary.BigEndian.Uint64(<- d.in)
-    d.fileSize = size
-    checksum = <- d.in
-    return
+type UploadPeerFileInfo struct {
+    name     string
+    size     uint64
+    checksum []byte
+}
+
+func (d *UploadPeer) ReceiveFileInfo() UploadPeerFileInfo {
+    info := UploadPeerFileInfo{}
+
+    info.name = string(<- d.in)
+    info.size = binary.BigEndian.Uint64(<- d.in)
+    info.checksum = <- d.in
+
+    d.fileSize = info.size
+
+    return info
 }
 
 type FileChunk struct {
-    status bool
-    data   []byte
+    good bool
+    data []byte
 }
 
 func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan FileChunk {
@@ -215,7 +225,7 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan FileChunk {
 
             // the chunk is done being read, so off to get handled...
             ch <- FileChunk{
-                status: dataBuff[0] == Continue,
+                good: dataBuff[0] == Continue,
                 data:   dataBuff[1:],
             }
         }
@@ -226,4 +236,8 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) chan FileChunk {
 
 func (d *UploadPeer) SendProtocolResponse(res byte) {
     d.writer.WriteByte(res)
+}
+
+func (d *UploadPeer) Close() {
+    d.conn.Close()
 }

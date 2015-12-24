@@ -94,7 +94,15 @@ func Download(c *cli.Context) {
     uploadPeer := UploadPeer{}
 
     if ok := handleConnect(uploadPeer, port); ! ok { return }
+
     if ok := handlePassword(uploadPeer, password); ! ok { return }
+
+    fileInfo := handleFileInfo(uploadPeer)
+    ok, file := handleFileChunks(uploadPeer, destination, fileInfo)
+
+    if ! ok { return }
+
+    if ok := handleVerification(fileInfo, file); ! ok { return }
 }
 
 func handleConnect(uploadPeer *UploadPeer, port uint16) (ok bool) {
@@ -116,161 +124,88 @@ func handlePassword(uploadPeer *UploadPeer, password string) (ok bool) {
 
     if bytes.Equal(passwordHash, peerPasswordHash) {
         fmt.Println("match")
+        uploadPeer.SendProtocolResponse(PasswordMatch)
         return true
     } else {
-        fmt.Fprintln(os.Stderr, "Peer sent wrong password")
+        fmt.Fprintln(os.Stderr, "peer sent wrong password")
+        uploadPeer.SendProtocolResponse(PasswordMismatch)
+//        uploadPeer.Close()
         return false
     }
 }
 
-func listen(password, fileName string) {
-    // start the TCP listener
-    listener, err := net.Listen("tcp", net.JoinHostPort("", portStr))
-    check(err)
-    defer listener.Close()
+func handleFileInfo(uploadPeer *UploadPeer) UploadPeerFileInfo {
+    fmt.Print("Receiving file info... ")
 
-    fmt.Println("Listening...")
+    info := uploadPeer.ReceiveFileInfo()
 
-    // listen for a peer connection
-    conn, err := listener.Accept()
-    check(err)
-    defer conn.Close()
-
-    fmt.Println("Connected to peer")
-    incomingChannel := createIncomingChannel(conn)
-    receive(conn, incomingChannel, password, fileName)
+    fmt.Println("done")
+    return info
 }
 
-func createIncomingChannel(conn net.Conn) chan []byte {
-    incomingChannel := make(chan []byte)
-
-    go func() {
-        for {
-            // read sizeOfUint64 bytes from the connection
-            buffer := make([]byte, sizeOfUint64)
-            bytesRead, err := conn.Read(buffer)
-
-            // EOF
-            if err != nil {
-                break
-            }
-
-            if bytesRead != len(buffer) {
-                panic(fmt.Sprintf("Didn't read %d bytes; %d instead", sizeOfUint64, bytesRead))
-            }
-
-            dataSize := bytesToUint64(buffer)
-
-            var finalDataBytesRead bytes.Buffer
-
-            for uint64(finalDataBytesRead.Len()) < dataSize {
-                // read dataSize bytes from the connection
-                dataBuffer := make([]byte, dataSize - uint64(finalDataBytesRead.Len()))
-                dataBytesRead, err := conn.Read(dataBuffer)
-                finalDataBytesRead.Write(dataBuffer[:dataBytesRead])
-                check(err)
-            }
-
-            if uint64(finalDataBytesRead.Len()) != dataSize {
-                panic(fmt.Sprintf("Didn't read %d bytes; %d instead", dataSize, finalDataBytesRead.Len()))
-            }
-
-            incomingChannel <- finalDataBytesRead.Bytes()
-        }
-    }()
-
-    return incomingChannel
-}
-
-func receive(conn net.Conn, incoming chan []byte, password, fileName string) {
-    // wait for password
-    incomingPassword := string(<-incoming)
-
-    if (incomingPassword != password) {
-        fmt.Println("Peer sent wrong password")
-        conn.Write([]byte{passwordBad})
-        conn.Close()
-        return
-    } else {
-        fmt.Println("Password verified")
-        conn.Write([]byte{passwordGood})
+func handleFileChunks(uploadPeer *UploadPeer, destination string, fileInfo *UploadPeerFileInfo) (ok bool, os.File) {
+    if destination == "" {
+        destination = fileInfo.name
     }
 
-    // wait for fileName
-    incomingFileName := string(<-incoming)
+    file, err := os.Create(destination)
 
-    // if the user has not specified a specific file name, use the incoming name
-    if (fileName == "") {
-        fileName = incomingFileName
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Error: ", err)
+        return false, nil
     }
 
-    // wait for fileSize
-    fileSize := bytesToUint64(<-incoming)
+    fmt.Printf("Downloading file '%s' with a size of %s (SHA-256 %s) to %s\n",
+        fileInfo.name, formatSize(fileInfo.name), hex.EncodeToString(fileInfo.checksum),
+        filepath.Abs(destination))
 
-    // wait for checksum
-    fileSum := <-incoming
+    var totalRead uint64
 
-    fmt.Printf("Downloading file '%s' with a size of %s (sha256 %s)\n", incomingFileName, formatSize(fileSize), hex.EncodeToString(fileSum))
+    ch := uploadPeer.ReceiveFileChunks(chunkSize)
 
-    // create temporary file to write to
-    tmpFileName := fileName + ".tmp"
-    file, err := os.Create(tmpFileName)
-    check(err)
-    defer file.Close()
+    updateProgress(&float64(totalRead), fileInfo.size)
 
-    var totalBytesReceived uint64
-    var bytesSinceSync uint64
-    doProgressPrint := true
+    // while the total amount of bytes we've read is less than the file's
+    // size...
+    for totalRead < fileInfo.size {
+        fileChunk := <- ch
 
-    updateProgress(&totalBytesReceived, &fileSize, &doProgressPrint)
+        // add to the total amount of bytes read whatever we just read from the
+        // peer
+        totalRead += uint64(len(fileChunk.data))
 
-    save := func() {
-        fmt.Print("Saving... ")
-        doProgressPrint = false
-        err = file.Sync()
-        check(err)
-        doProgressPrint = true
-        fmt.Println("done")
-    }
-
-    // start receiving file bytes
-    for totalBytesReceived < fileSize {
-        fileBuffer := <-incoming
-        fileBytesWritten, err := file.WriteAt(fileBuffer, int64(totalBytesReceived))
-        check(err)
-
-        if fileBytesWritten != len(fileBuffer) {
-            panic(fmt.Sprintf("Didn't write %d bytes; %d instead", len(fileBuffer), fileBytesWritten))
+        // the peer wants to disconnect
+        if ! fileChunk.good {
+            fmt.Fprintln(os.Stderr, "Peer stopped sending file, therefore your " +
+                "copy cannot be verified and may be corrupt and/or incomplete. " +
+                "You should (probably) delete the incomplete file: ", filepath.Abs(destination))
+            return false, nil
         }
 
-        fileBufferLen := uint64(len(fileBuffer))
-
-        totalBytesReceived += fileBufferLen
-        bytesSinceSync += fileBufferLen
+        file.WriteAt(fileChunk.data, int64(totalRead))
     }
 
-    // do final save
-    save()
-
-    // calculate/verify sha256 checksum
-    tmpFileSum := checksum(tmpFileName)
-
-    if bytes.Equal(fileSum, tmpFileSum) {
-        fmt.Println("Checksums verified")
-    } else {
-        panic("Checksum mismatch")
-    }
-
-    // rename file to correct name
-    err = os.Rename(tmpFileName, fileName)
-    check(err)
-
-    path, err := filepath.Abs(fileName)
-    check(err)
-
-    fmt.Printf("File downloaded at '%s'\n", path)
+    fmt.Printf("Done! Wrote: %s\n", filepath.Abs(destination))
+    return true, file
 }
 
-func bytesToUint64(b []byte) uint64 {
-    return binary.BigEndian.Uint64(b)
+func handleVerification(fileInfo *UploadPeerFileInfo, file *os.File) (ok bool) {
+    fmt.Print("Verifying checksum... ")
+
+    fileHash, err := fileChecksum(file)
+
+    if err != nil {
+        fmt.Print("error: ", err)
+        return false
+    }
+
+    if bytes.Equal(fileHash, fileInfo.checksum) {
+        fmt.Println("match")
+        return true
+    }
+
+    fmt.Println("mismatch. The file may have been corrupted during transport. Try " +
+        "asking for the file to be sent again!")
+
+    return false
 }

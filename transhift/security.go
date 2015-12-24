@@ -6,19 +6,10 @@ import (
     "io"
 )
 
-func fileChecksum(filePath string) ([]byte, error) {
-    file, err := os.Open(filePath)
-
-    if err != nil {
-        return nil, err
-    }
-
-    defer file.Close()
-
+func fileChecksum(file os.File) ([]byte, error) {
     hash := sha256.New()
-    _, err = io.Copy(hash, file)
 
-    if err != nil {
+    if _, err := io.Copy(hash, file); err != nil {
         return nil, err
     }
 
