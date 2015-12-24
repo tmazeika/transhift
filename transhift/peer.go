@@ -60,6 +60,7 @@ func (d *DownloadPeer) SendFileInfo(name string, size uint64, checksum []byte) {
     sizeBuff := make([]byte, 8)
     binary.BigEndian.PutUint64(sizeBuff, size)
     d.conn.Write(sizeBuff)
+    d.conn.Write(byte('\n'))
     // checksum
     d.conn.Write(checksum)
     d.conn.Write(byte('\n'))
