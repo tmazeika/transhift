@@ -6,6 +6,12 @@ import (
     "fmt"
 )
 
+const (
+    ProtoPort uint16 =  50977
+    ProtoPortStr     = "50977"
+    ProtoChunkSize   = 1024
+)
+
 type Serializable interface {
     Serialize() []byte
 
@@ -72,7 +78,7 @@ func (c *ProtoChunk) Serialize() []byte {
     var buffer bytes.Buffer
 
     // close
-    buffer.WriteByte(Btobyte(c.close))
+    buffer.WriteByte(boolToByte(c.close))
     // data
     buffer.Write(c.data)
 
@@ -81,7 +87,7 @@ func (c *ProtoChunk) Serialize() []byte {
 
 func (c *ProtoChunk) Deserialize(b []byte) {
     // close
-    c.close = Btobool(b[0])
+    c.close = byteToBool(b[0])
     // data
     c.data = b[1:]
 }
@@ -90,14 +96,14 @@ func (c *ProtoChunk) String() string {
     return fmt.Sprintf("{close=%t, data=(len)%d}", c.close, len(c.data))
 }
 
-func Btobyte(b bool) byte {
+func boolToByte(b bool) byte {
     if b {
         return 0x01
     }
     return 0x00
 }
 
-func Btobool(b byte) bool {
+func byteToBool(b byte) bool {
     if b == 0x00 {
         return false
     }
