@@ -30,13 +30,21 @@ type DownloadPeer struct {
     writer   *bufio.Writer
 }
 
-func (p *DownloadPeer) Connect(args UploadArgs) {
+func (p *DownloadPeer) Connect(args UploadArgs) error {
     for p.conn == nil {
         p.conn, _ = net.Dial("tcp", net.JoinHostPort(args.peerHost, ProtoPortStr))
     }
 
     p.reader = bufio.NewReader(p.conn)
     p.writer = bufio.NewWriter(p.conn)
+
+    err := checkCompatibility(p.reader, p.writer)
+
+    if err != nil {
+        return err
+    }
+
+    return nil
 }
 
 func (p *DownloadPeer) SendMetaInfo(metaInfo *ProtoMetaInfo) {
@@ -72,8 +80,14 @@ func Upload(c *cli.Context) {
 
     peer := &DownloadPeer{}
     fmt.Printf("Connecting to '%s'... ", args.peerHost)
-    peer.Connect(args)
+    err := peer.Connect(args)
     defer peer.conn.Close()
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+
     fmt.Println("done")
     fmt.Print("Sending file info... ")
 

@@ -4,11 +4,12 @@ import (
     "bytes"
     "encoding/binary"
     "fmt"
+    "bufio"
 )
 
 // application information
 const (
-    AppVersion = "0.2.0"
+    AppVersion = "0.3.0"
 )
 
 // compatibility information
@@ -33,16 +34,47 @@ const (
     ProtoMsgChecksumMatch    = byte(0x03)
 )
 
-func checkCompatibility(version1, version2 string) bool {
-    if appCompatibility[version1] != nil {
-        for _, v := range appCompatibility[version1] {
-            if v == version2 {
-                return true
+func checkCompatibility(in *bufio.Reader, out *bufio.Writer) error {
+    compare := func(v1, v2 string) bool {
+        if appCompatibility[v1] != nil {
+            for _, v := range appCompatibility[v1] {
+                if v == v2 {
+                    return true
+                }
             }
         }
+
+        return false
     }
 
-    return false
+    out.WriteString(AppVersion)
+    out.WriteRune('\n')
+    out.Flush()
+
+    line, err := in.ReadBytes('\n')
+    line = line[:len(line) - 1] // trim trailing \n
+
+    if err != nil {
+        return err
+    }
+
+    remoteVersion := string(line)
+    localCompatibility := compare(AppVersion, remoteVersion)
+    out.WriteByte(boolToByte(localCompatibility))
+    out.Flush()
+
+    lineBuffer := make([]byte, 1)
+    _, err = in.Read(lineBuffer)
+
+    if err != nil {
+        return err
+    }
+
+    if ! localCompatibility && ! byteToBool(lineBuffer[0]) {
+        return fmt.Errorf("incompatible versions %s and %s", AppVersion, remoteVersion)
+    }
+
+    return nil
 }
 
 type Serializable interface {
@@ -106,4 +138,18 @@ func uint64Min(x, y uint64) uint64 {
         return x
     }
     return y
+}
+
+func boolToByte(b bool) byte {
+    if b {
+        return 0x01
+    }
+    return 0x00
+}
+
+func byteToBool(b byte) bool {
+    if b == 0x00 {
+        return false
+    }
+    return true
 }

@@ -48,15 +48,10 @@ func (p *UploadPeer) Connect(args DownloadArgs) error {
     p.reader = bufio.NewReader(p.conn)
     p.writer = bufio.NewWriter(p.conn)
 
-    p.writer.WriteString(AppVersion)
-    p.writer.WriteRune('\n')
-    p.writer.Flush()
-
-    line, err := p.reader.ReadBytes('\n')
+    err = checkCompatibility(p.reader, p.writer)
 
     if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        os.Exit(1)
+        return err
     }
 
     return nil
