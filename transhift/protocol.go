@@ -6,6 +6,18 @@ import (
     "fmt"
 )
 
+// application information
+const (
+    AppVersion = "0.2.0"
+)
+
+// compatibility information
+const (
+    AppCompatibility = map[string][]string{
+        "0.2.0": []string{"0.2.0"},
+    }
+)
+
 // protocol information
 const (
     ProtoPort uint16 =  50977

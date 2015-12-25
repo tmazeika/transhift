@@ -15,7 +15,7 @@ type UploadArgs struct {
     filePath string
 }
 
-func (a UploadArgs) PasswordHash() []byte {
+func (a UploadArgs) PasswordChecksum() []byte {
     return calculateStringChecksum(a.password)
 }
 

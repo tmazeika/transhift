@@ -14,7 +14,7 @@ type DownloadArgs struct {
     destination string
 }
 
-func (a DownloadArgs) PasswordHash() []byte {
+func (a DownloadArgs) PasswordChecksum() []byte {
     return calculateStringChecksum(a.password)
 }
 
@@ -113,7 +113,7 @@ func Download(c *cli.Context) {
     peer.ReceiveMetaInfo()
 
     // verify password
-    if bytes.Equal(args.PasswordHash(), peer.metaInfo.passwordChecksum) {
+    if bytes.Equal(args.PasswordChecksum(), peer.metaInfo.passwordChecksum) {
         peer.SendMessage(ProtoMsgPasswordMatch)
         fmt.Println(peer.metaInfo)
     } else {
