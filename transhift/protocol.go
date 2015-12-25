@@ -10,7 +10,7 @@ import (
 const (
     ProtoPort uint16 =  50977
     ProtoPortStr     = "50977"
-    ProtoChunkSize   = 8
+    ProtoChunkSize   = 1024 * 1024
 )
 
 // protocol messages

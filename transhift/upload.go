@@ -110,7 +110,11 @@ func Upload(c *cli.Context) {
 
     fmt.Println("Uploading... ")
     var bytesWritten uint64
-    pbarStopCh := showProgressBar(&bytesWritten, uint64(fileInfo.Size()))
+    progressBar := ProgressBar{
+        current: &bytesWritten,
+        total:   uint64(fileInfo.Size()),
+    }
+    progressBar.Start()
 
     for bytesWritten < uint64(fileInfo.Size()) {
         adjustedChunkSize := uint64Min(uint64(fileInfo.Size()) - bytesWritten, ProtoChunkSize)
@@ -120,8 +124,8 @@ func Upload(c *cli.Context) {
         peer.SendChunk(chunkBuffer)
     }
 
-    pbarStopCh <- true
-    fmt.Print("\nVerifying file... ")
+    progressBar.Stop(true)
+    fmt.Print("Verifying file... ")
 
     switch <- msgCh {
     case ProtoMsgChecksumMatch:

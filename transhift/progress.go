@@ -7,49 +7,49 @@ import (
     "math"
 )
 
-func showProgressBar(current *uint64, total uint64) (stopCh chan bool) {
-    stopCh = make(chan bool)
-    stop := false
+type ProgressBar struct {
+    stop    bool
+    current *uint64
+    total   uint64
+}
 
-    update := func() {
-        var buff bytes.Buffer
-        percent := float64(*current) / float64(total)
-
-        buff.WriteString(fmt.Sprintf("\r%.f%% [", percent * 100))
-
-        const BarSize = float64(50)
-
-        for i := float64(0); i < percent * BarSize - 1; i++ {
-            buff.WriteRune('=')
-        }
-
-        buff.WriteRune('>')
-
-        for i := float64(0); i < BarSize - percent * BarSize; i++ {
-            buff.WriteRune(' ')
-        }
-
-        buff.WriteString(fmt.Sprintf("] %s / %s", formatSize(*current), formatSize(total)))
-        fmt.Print(buff.String())
-    }
-
+func (p *ProgressBar) Start() {
     go func() {
-        for ! stop && *current < total {
-            update()
+        for ! p.stop {
+            p.Update()
             time.Sleep(time.Second)
         }
     }()
+}
 
-    go func() {
-        updateAfterStop := <- stopCh
-        stop = true
+func (p *ProgressBar) Update() {
+    var buff bytes.Buffer
+    percent := float64(*p.current) / float64(p.total)
 
-        if updateAfterStop {
-            update()
-        }
-    }()
+    buff.WriteString(fmt.Sprintf("%.f%% [", percent * 100))
 
-    return
+    const BarSize = float64(50)
+
+    for i := float64(0); i < percent * BarSize - 1; i++ {
+        buff.WriteRune('=')
+    }
+
+    buff.WriteRune('>')
+
+    for i := float64(0); i < BarSize - percent * BarSize; i++ {
+        buff.WriteRune(' ')
+    }
+
+    buff.WriteString(fmt.Sprintf("] %s / %s", formatSize(*p.current), formatSize(p.total)))
+    fmt.Println(buff.String())
+}
+
+func (p *ProgressBar) Stop(forceUpdate bool) {
+    p.stop = true
+
+    if forceUpdate {
+        p.Update()
+    }
 }
 
 func formatSize(size uint64) string {
