@@ -12,8 +12,8 @@ const (
 )
 
 // compatibility information
-const (
-    AppCompatibility = map[string][]string{
+var (
+    appCompatibility = map[string][]string{
         "0.2.0": []string{"0.2.0"},
     }
 )
@@ -32,6 +32,18 @@ const (
     ProtoMsgChecksumMismatch = byte(0x02)
     ProtoMsgChecksumMatch    = byte(0x03)
 )
+
+func checkCompatibility(version1, version2 string) bool {
+    if appCompatibility[version1] != nil {
+        for _, v := range appCompatibility[version1] {
+            if v == version2 {
+                return true
+            }
+        }
+    }
+
+    return false
+}
 
 type Serializable interface {
     Serialize() []byte
