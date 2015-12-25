@@ -82,14 +82,14 @@ func (p *UploadPeer) ReceiveChunks() chan *ProtoChunk {
 
             for chunkBytesRead < adjustedChunkSize {
                 subChunkBytesRead, _ := p.reader.Read(chunkBuffer[chunkBytesRead:])
-                chunkBytesRead += subChunkBytesRead
+                chunkBytesRead += uint64(subChunkBytesRead)
             }
 
             bytesRead += adjustedChunkSize
             chunk := &ProtoChunk{}
             chunk.Deserialize(chunkBuffer)
             chunk.last = (bytesRead == p.metaInfo.fileSize)
-            ch <- &chunk
+            ch <- chunk
             // TODO: chunk.close
         }
     }()

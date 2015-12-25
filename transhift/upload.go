@@ -112,10 +112,10 @@ func Upload(c *cli.Context) {
     fmt.Print("Uploading... ")
     var bytesWritten uint64
 
-    for bytesWritten < fileInfo.Size() {
+    for bytesWritten < uint64(fileInfo.Size()) {
         chunkBuffer := make([]byte, ProtoChunkSize)
-        chunkBytesWritten, err := file.ReadAt(chunkBuffer, bytesWritten)
-        bytesWritten += chunkBytesWritten
+        chunkBytesWritten, err := file.ReadAt(chunkBuffer, int64(bytesWritten))
+        bytesWritten += uint64(chunkBytesWritten)
 
         if err != nil {
             fmt.Fprintln(os.Stderr, err)
