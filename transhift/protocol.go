@@ -5,7 +5,6 @@ import (
     "encoding/binary"
     "fmt"
     "bufio"
-    "net"
 )
 
 // application information

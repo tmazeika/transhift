@@ -25,21 +25,22 @@ type DownloadPeer struct {
     writer   *bufio.Writer
 }
 
-func (p *DownloadPeer) PunchHole(args UploadArgs) (remoteAddr string, error) {
+func (p *DownloadPeer) PunchHole(args UploadArgs) (remoteAddr string, err error) {
     conn, err := net.Dial("tcp", net.JoinHostPort(PuncherHost, PuncherPortStr))
 
     if err != nil {
-        return nil, err
+        return "", err
     }
 
     defer conn.Close()
     conn.Write([]byte{byte(ProtoMsgClientTypeUL)})
-    conn.Write(args.peer)
+    conn.Write([]byte(args.peer))
     line, err := bufio.NewReader(conn).ReadBytes('\n')
+
     line = line[:len(line) - 1] // trim trailing \n
 
     if err != nil {
-        return nil, err
+        return "", err
     }
 
     return string(line), nil
@@ -70,14 +71,14 @@ func (p *DownloadPeer) SendChunk(chunk []byte) {
     p.conn.Write(chunk)
 }
 
-func (p *DownloadPeer) ReceiveMessages() chan byte {
-    ch := make(chan byte)
+func (p *DownloadPeer) ReceiveMessages() chan ProtoMsg {
+    ch := make(chan ProtoMsg)
 
     go func() {
         for {
             buffer := make([]byte, 1)
             p.conn.Read(buffer)
-            ch <- buffer[0]
+            ch <- ProtoMsg(buffer[0])
         }
     }()
 
@@ -90,8 +91,13 @@ func Upload(c *cli.Context) {
         filePath: c.Args()[1],
     }
 
+    if len(args.peer) != ProtoPeerUIDLen {
+        fmt.Fprintf(os.Stderr, "Peer UID should be %d characters\n", ProtoPeerUIDLen)
+        os.Exit(1)
+    }
+
     peer := &DownloadPeer{}
-    fmt.Printf("Connecting to '%s'... ", args.peer)
+    fmt.Print("Waiting for peer... ")
     remoteAddr, err := peer.PunchHole(args)
 
     if err != nil {
@@ -99,6 +105,8 @@ func Upload(c *cli.Context) {
         os.Exit(1)
     }
 
+    fmt.Println("done")
+    fmt.Printf("Connecting to '%s'... ", args.peer)
     err = peer.Connect(remoteAddr)
     defer peer.conn.Close()
 

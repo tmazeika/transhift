@@ -27,11 +27,11 @@ type UploadPeer struct {
     metaInfo *ProtoMetaInfo
 }
 
-func (p *UploadPeer) PunchHole() (uid, localPort string, error) {
+func (p *UploadPeer) PunchHole() (uid, localPort string, err error) {
     conn, err := net.Dial("tcp", net.JoinHostPort(PuncherHost, PuncherPortStr))
 
     if err != nil {
-        return nil, nil, err
+        return "", "", err
     }
 
     defer conn.Close()
@@ -43,7 +43,7 @@ func (p *UploadPeer) PunchHole() (uid, localPort string, error) {
     _, port, err := net.SplitHostPort(localAddr)
 
     if err != nil {
-        return nil, nil, err
+        return "", "", err
     }
 
     return string(uidBuffer), port, nil
@@ -112,7 +112,7 @@ func (p *UploadPeer) ReceiveChunks() chan []byte {
 }
 
 func (p *UploadPeer) SendMessage(message ProtoMsg) {
-    p.writer.Write([]byte(byte(message)))
+    p.writer.Write([]byte{byte(message)})
 }
 
 func Download(c *cli.Context) {
@@ -121,8 +121,17 @@ func Download(c *cli.Context) {
     }
 
     peer := &UploadPeer{}
+    uid, localPort, err := peer.PunchHole()
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Unable to retrieve UID")
+        os.Exit(1)
+    }
+
+    fmt.Printf("UID: '%s'\n", uid)
     fmt.Print("Listening for peer... ")
-    err := peer.Connect(args)
+
+    err = peer.Connect(localPort)
     defer peer.conn.Close()
 
     if err != nil {
