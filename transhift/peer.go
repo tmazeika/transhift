@@ -206,24 +206,14 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) (ch chan FileChunk) {
     var totalRead uint64
 
     go func() {
-        // for as long as the total amount of bytes read is less than the file
-        // size...
         for totalRead < d.metaInfo.fileSize {
-            // this is the chunk size we'll actually be using; use either the
-            // given chunk size or the number of bytes left until the end of the
-            // file, whichever is most restrictive (smaller)
             adjustedChunkSize := min(d.metaInfo.fileSize - totalRead, chunkSize)
 
-            // make a new buffer to hold the bytes for this chunk
             dataBuff := make([]byte, adjustedChunkSize)
 
             var chunkRead uint64
 
-            // for as long as we haven't finished filling up the buffer for the
-            // chunk...
             for chunkRead < adjustedChunkSize {
-                // read bytes from the connection starting at the last position
-                // we read
                 dataRead, err := d.reader.Read(dataBuff[chunkRead:])
 
                 if err != nil {
@@ -231,7 +221,6 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) (ch chan FileChunk) {
                     return
                 }
 
-                // add to the bytes read of this chunk whatever was just read
                 chunkRead += uint64(dataRead)
             }
 
