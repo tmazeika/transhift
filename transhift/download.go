@@ -110,6 +110,13 @@ func Download(c *cli.Context) {
 
     peer := &UploadPeer{}
     fmt.Print("Connecting to peer...")
+    err := peer.Connect(args)
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+
     peer.ReceiveMetaInfo()
 
     // verify password
