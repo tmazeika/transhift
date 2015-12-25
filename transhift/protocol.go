@@ -5,6 +5,7 @@ import (
     "encoding/binary"
     "fmt"
     "bufio"
+    "net"
 )
 
 // application information
@@ -20,19 +21,27 @@ var (
     }
 )
 
+// puncher information
+const (
+    PuncherHost        = "127.0.0.1" // TODO: change
+    PuncherPort uint16 =  50977
+    PuncherPortStr     = "50977"
+    ProtoPeerUIDLen    = 16
+)
+
 // protocol information
 const (
-    ProtoPort uint16 =  50977
-    ProtoPortStr     = "50977"
-    ProtoChunkSize   = 4096
+    ProtoChunkSize = 4096
 )
+
+type ProtoMsg byte
 
 // protocol messages
 const (
-    ProtoMsgPasswordMismatch = byte(0x00)
-    ProtoMsgPasswordMatch    = byte(0x01)
-    ProtoMsgChecksumMismatch = byte(0x02)
-    ProtoMsgChecksumMatch    = byte(0x03)
+    ProtoMsgClientTypeDL     ProtoMsg = 0x00
+    ProtoMsgClientTypeUL     ProtoMsg = 0x01
+    ProtoMsgChecksumMismatch ProtoMsg = 0x02
+    ProtoMsgChecksumMatch    ProtoMsg = 0x03
 )
 
 func checkCompatibility(in *bufio.Reader, out *bufio.Writer) error {
@@ -85,18 +94,14 @@ type Serializable interface {
 }
 
 type ProtoMetaInfo struct {
-    passwordChecksum []byte
-    fileName         string
-    fileSize         uint64
-    fileChecksum     []byte
+    fileName      string
+    fileSize      uint64
+    fileChecksum  []byte
 }
 
 func (m *ProtoMetaInfo) Serialize() []byte {
     var buffer bytes.Buffer
 
-    // passwordChecksum
-    buffer.Write(m.passwordChecksum)
-    buffer.WriteRune('\n')
     // fileName
     buffer.WriteString(m.fileName)
     buffer.WriteRune('\n')
@@ -115,9 +120,6 @@ func (m *ProtoMetaInfo) Serialize() []byte {
 func (m *ProtoMetaInfo) Deserialize(b []byte) {
     buffer := bytes.NewBuffer(b)
 
-    // passwordChecksum
-    m.passwordChecksum, _ = buffer.ReadBytes('\n')
-    m.passwordChecksum = m.passwordChecksum[:len(m.passwordChecksum) - 1] // trim leading \n
     // fileName
     m.fileName, _ = buffer.ReadString('\n')
     m.fileName = m.fileName[:len(m.fileName) - 1] // trim leading \n

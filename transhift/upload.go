@@ -10,13 +10,8 @@ import (
 )
 
 type UploadArgs struct {
-    peerHost string
-    password string
+    peer     string
     filePath string
-}
-
-func (a UploadArgs) PasswordChecksum() []byte {
-    return calculateStringChecksum(a.password)
 }
 
 func (a UploadArgs) AbsFilePath() string {
@@ -30,9 +25,29 @@ type DownloadPeer struct {
     writer   *bufio.Writer
 }
 
-func (p *DownloadPeer) Connect(args UploadArgs) error {
+func (p *DownloadPeer) PunchHole(args UploadArgs) (remoteAddr string, error) {
+    conn, err := net.Dial("tcp", net.JoinHostPort(PuncherHost, PuncherPortStr))
+
+    if err != nil {
+        return nil, err
+    }
+
+    defer conn.Close()
+    conn.Write([]byte{byte(ProtoMsgClientTypeUL)})
+    conn.Write(args.peer)
+    line, err := bufio.NewReader(conn).ReadBytes('\n')
+    line = line[:len(line) - 1] // trim trailing \n
+
+    if err != nil {
+        return nil, err
+    }
+
+    return string(line), nil
+}
+
+func (p *DownloadPeer) Connect(remoteAddr string) error {
     for p.conn == nil {
-        p.conn, _ = net.Dial("tcp", net.JoinHostPort(args.peerHost, ProtoPortStr))
+        p.conn, _ = net.Dial("tcp", remoteAddr)
     }
 
     p.reader = bufio.NewReader(p.conn)
@@ -48,13 +63,11 @@ func (p *DownloadPeer) Connect(args UploadArgs) error {
 }
 
 func (p *DownloadPeer) SendMetaInfo(metaInfo *ProtoMetaInfo) {
-    p.writer.Write(metaInfo.Serialize())
-    p.writer.Flush()
+    p.conn.Write(metaInfo.Serialize())
 }
 
 func (p *DownloadPeer) SendChunk(chunk []byte) {
-    p.writer.Write(chunk)
-    p.writer.Flush()
+    p.conn.Write(chunk)
 }
 
 func (p *DownloadPeer) ReceiveMessages() chan byte {
@@ -63,7 +76,7 @@ func (p *DownloadPeer) ReceiveMessages() chan byte {
     go func() {
         for {
             buffer := make([]byte, 1)
-            p.reader.Read(buffer)
+            p.conn.Read(buffer)
             ch <- buffer[0]
         }
     }()
@@ -73,14 +86,20 @@ func (p *DownloadPeer) ReceiveMessages() chan byte {
 
 func Upload(c *cli.Context) {
     args := UploadArgs{
-        peerHost: c.Args()[0],
-        password: c.Args()[1],
-        filePath: c.Args()[2],
+        peer:     c.Args()[0],
+        filePath: c.Args()[1],
     }
 
     peer := &DownloadPeer{}
-    fmt.Printf("Connecting to '%s'... ", args.peerHost)
-    err := peer.Connect(args)
+    fmt.Printf("Connecting to '%s'... ", args.peer)
+    remoteAddr, err := peer.PunchHole(args)
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+
+    err = peer.Connect(remoteAddr)
     defer peer.conn.Close()
 
     if err != nil {
@@ -108,25 +127,13 @@ func Upload(c *cli.Context) {
     }
 
     metaInfo := &ProtoMetaInfo{
-        passwordChecksum: calculateStringChecksum(args.password),
         fileName: filepath.Base(file.Name()),
         fileSize: uint64(fileInfo.Size()),
         fileChecksum: calculateFileChecksum(file),
     }
 
     peer.SendMetaInfo(metaInfo)
-
-    switch <- msgCh {
-    case ProtoMsgPasswordMatch:
-        fmt.Println(metaInfo)
-    case ProtoMsgPasswordMismatch:
-        fmt.Fprintln(os.Stderr, "password mismatch")
-        os.Exit(1)
-    default:
-        fmt.Fprintln(os.Stderr, "protocol error")
-        os.Exit(1)
-    }
-
+    fmt.Println(metaInfo)
     fmt.Printf("Uploading '%s'...\n", args.AbsFilePath())
     var bytesWritten uint64
     progressBar := ProgressBar{

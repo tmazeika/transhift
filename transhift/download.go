@@ -10,12 +10,7 @@ import (
 )
 
 type DownloadArgs struct {
-    password    string
     destination string
-}
-
-func (a DownloadArgs) PasswordChecksum() []byte {
-    return calculateStringChecksum(a.password)
 }
 
 func (a DownloadArgs) DestinationOrDef(def string) string {
@@ -32,8 +27,30 @@ type UploadPeer struct {
     metaInfo *ProtoMetaInfo
 }
 
-func (p *UploadPeer) Connect(args DownloadArgs) error {
-    listener, err := net.Listen("tcp", net.JoinHostPort("", ProtoPortStr))
+func (p *UploadPeer) PunchHole() (uid, localPort string, error) {
+    conn, err := net.Dial("tcp", net.JoinHostPort(PuncherHost, PuncherPortStr))
+
+    if err != nil {
+        return nil, nil, err
+    }
+
+    defer conn.Close()
+    conn.Write([]byte{byte(ProtoMsgClientTypeDL)})
+    uidBuffer := make([]byte, ProtoPeerUIDLen)
+    conn.Read(uidBuffer)
+
+    localAddr := conn.LocalAddr().String()
+    _, port, err := net.SplitHostPort(localAddr)
+
+    if err != nil {
+        return nil, nil, err
+    }
+
+    return string(uidBuffer), port, nil
+}
+
+func (p *UploadPeer) Connect(port string) error {
+    listener, err := net.Listen("tcp", net.JoinHostPort("", port))
 
     if err != nil {
         return err
@@ -58,7 +75,7 @@ func (p *UploadPeer) Connect(args DownloadArgs) error {
 }
 
 func (p *UploadPeer) ReceiveMetaInfo() {
-    const ExpectedNLCount = 4
+    const ExpectedNLCount = 3
 
     var buffer bytes.Buffer
 
@@ -94,14 +111,12 @@ func (p *UploadPeer) ReceiveChunks() chan []byte {
     return ch
 }
 
-func (p *UploadPeer) SendMessage(message byte) {
-    p.writer.WriteByte(message)
-    p.writer.Flush()
+func (p *UploadPeer) SendMessage(message ProtoMsg) {
+    p.writer.Write([]byte(byte(message)))
 }
 
 func Download(c *cli.Context) {
     args := DownloadArgs{
-        password:    c.Args()[0],
         destination: c.String("destination"),
     }
 
@@ -118,17 +133,6 @@ func Download(c *cli.Context) {
     fmt.Println("done")
     fmt.Print("Waiting for file info... ")
     peer.ReceiveMetaInfo()
-
-    // verify password
-    if bytes.Equal(args.PasswordChecksum(), peer.metaInfo.passwordChecksum) {
-        peer.SendMessage(ProtoMsgPasswordMatch)
-        fmt.Println(peer.metaInfo)
-    } else {
-        peer.SendMessage(ProtoMsgPasswordMismatch)
-        fmt.Fprintln(os.Stderr, "password mismatch")
-        os.Exit(1)
-    }
-
     fmt.Println("Downloading... ")
     file, err := os.Create(args.DestinationOrDef(peer.metaInfo.fileName))
     defer file.Close()
