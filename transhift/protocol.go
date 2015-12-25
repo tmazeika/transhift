@@ -10,7 +10,7 @@ import (
 const (
     ProtoPort uint16 =  50977
     ProtoPortStr     = "50977"
-    ProtoChunkSize   = 1024
+    ProtoChunkSize   = 8
 )
 
 // protocol messages
@@ -78,45 +78,9 @@ func (m *ProtoMetaInfo) String() string {
         m.passwordChecksum, m.fileName, m.fileSize, m.fileChecksum)
 }
 
-type ProtoChunk struct {
-    close bool
-    data  []byte
-    last  bool
-}
-
-func (c *ProtoChunk) Serialize() []byte {
-    var buffer bytes.Buffer
-
-    // close
-    buffer.WriteByte(boolToByte(c.close))
-    // data
-    buffer.Write(c.data)
-
-    return buffer.Bytes()
-}
-
-func (c *ProtoChunk) Deserialize(b []byte) {
-    // close
-    c.close = byteToBool(b[0])
-    // data
-    c.data = b[1:]
-}
-
-func (c *ProtoChunk) String() string {
-    return fmt.Sprintf("{close=%t, last=%t, data=(len)%d}",
-        c.close, c.last, len(c.data))
-}
-
-func boolToByte(b bool) byte {
-    if b {
-        return 0x01
+func uint64Min(x, y uint64) uint64 {
+    if x < y {
+        return x
     }
-    return 0x00
-}
-
-func byteToBool(b byte) bool {
-    if b == 0x00 {
-        return false
-    }
-    return true
+    return y
 }

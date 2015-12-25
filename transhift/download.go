@@ -70,27 +70,17 @@ func (p *UploadPeer) ReceiveMetaInfo() {
     p.metaInfo.Deserialize(buffer.Bytes())
 }
 
-func (p *UploadPeer) ReceiveChunks() chan *ProtoChunk {
-    ch := make(chan *ProtoChunk)
+func (p *UploadPeer) ReceiveChunks() chan []byte {
+    ch := make(chan []byte)
     var bytesRead uint64
 
     go func() {
         for bytesRead < p.metaInfo.fileSize {
             adjustedChunkSize := uint64Min(p.metaInfo.fileSize - bytesRead, ProtoChunkSize)
             chunkBuffer := make([]byte, adjustedChunkSize)
-            var chunkBytesRead uint64
-
-            for chunkBytesRead < adjustedChunkSize {
-                subChunkBytesRead, _ := p.reader.Read(chunkBuffer[chunkBytesRead:])
-                chunkBytesRead += uint64(subChunkBytesRead)
-            }
-
-            bytesRead += adjustedChunkSize
-            chunk := &ProtoChunk{}
-            chunk.Deserialize(chunkBuffer)
-            chunk.last = (bytesRead == p.metaInfo.fileSize)
-            ch <- chunk
-            // TODO: chunk.close
+            chunkBytesRead, _ := p.reader.Read(chunkBuffer)
+            bytesRead += uint64(chunkBytesRead)
+            ch <- chunkBuffer
         }
     }()
 
@@ -109,7 +99,7 @@ func Download(c *cli.Context) {
     }
 
     peer := &UploadPeer{}
-    fmt.Print("Connecting to peer...")
+    fmt.Print("Connecting to peer... ")
     err := peer.Connect(args)
 
     if err != nil {
@@ -140,14 +130,10 @@ func Download(c *cli.Context) {
     ch := peer.ReceiveChunks()
     var bytesRead uint64
 
-    for {
+    for bytesRead < peer.metaInfo.fileSize {
         chunk := <- ch
-        file.WriteAt(chunk.data, int64(bytesRead))
-        bytesRead += uint64(len(chunk.data))
-
-        if chunk.last {
-            break
-        }
+        file.WriteAt(chunk, int64(bytesRead))
+        bytesRead += uint64(len(chunk))
     }
 
     fmt.Println("done")
@@ -161,11 +147,4 @@ func Download(c *cli.Context) {
         fmt.Fprintln(os.Stderr, "checksum mismatch")
         os.Exit(1)
     }
-}
-
-func uint64Min(x, y uint64) uint64 {
-    if x < y {
-        return x
-    }
-    return y
 }

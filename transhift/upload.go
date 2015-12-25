@@ -45,8 +45,8 @@ func (p *DownloadPeer) SendMetaInfo(metaInfo *ProtoMetaInfo) {
     p.writer.Flush()
 }
 
-func (p *DownloadPeer) SendChunk(chunk *ProtoChunk) {
-    p.writer.Write(chunk.Serialize())
+func (p *DownloadPeer) SendChunk(chunk []byte) {
+    p.writer.Write(chunk)
     p.writer.Flush()
 }
 
@@ -98,6 +98,13 @@ func Upload(c *cli.Context) {
         fileChecksum: calculateFileChecksum(file),
     })
 
+    fmt.Println(ProtoMetaInfo{
+        passwordChecksum: calculateStringChecksum(args.password),
+        fileName: file.Name(),
+        fileSize: uint64(fileInfo.Size()),
+        fileChecksum: calculateFileChecksum(file),
+    })
+
     switch <- msgCh {
     case ProtoMsgPasswordMatch:
         fmt.Println("done")
@@ -113,22 +120,11 @@ func Upload(c *cli.Context) {
     var bytesWritten uint64
 
     for bytesWritten < uint64(fileInfo.Size()) {
-        chunkBuffer := make([]byte, ProtoChunkSize)
-        chunkBytesWritten, err := file.ReadAt(chunkBuffer, int64(bytesWritten))
+        adjustedChunkSize := uint64Min(uint64(fileInfo.Size()) - bytesWritten, ProtoChunkSize)
+        chunkBuffer := make([]byte, adjustedChunkSize)
+        chunkBytesWritten, _ := file.ReadAt(chunkBuffer, int64(bytesWritten))
         bytesWritten += uint64(chunkBytesWritten)
-
-        if err != nil {
-            fmt.Fprintln(os.Stderr, err)
-            peer.SendChunk(&ProtoChunk{
-                close: true,
-            })
-            os.Exit(1)
-        }
-
-        peer.SendChunk(&ProtoChunk{
-            close: false,
-            data:  chunkBuffer[:chunkBytesWritten],
-        })
+        peer.SendChunk(chunkBuffer)
     }
 
     fmt.Println("done")
