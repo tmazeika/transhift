@@ -23,20 +23,21 @@ func (p *ProgressBar) Start() {
 }
 
 func (p *ProgressBar) Update() {
-    var buff bytes.Buffer
-    percent := float64(*p.current) / float64(p.total)
-
-    buff.WriteString(fmt.Sprintf("%.f%% [", percent * 100))
-
     const BarSize = float64(50)
 
-    for i := float64(0); i < percent * BarSize - 1; i++ {
+    var buff bytes.Buffer
+    percent := float64(*p.current) / float64(p.total)
+    buff.WriteString(fmt.Sprintf("%3.f%% [", percent * 100))
+    var progressItrs uint8
+
+    for i := uint8(0); i < uint8(percent * BarSize); i++ {
         buff.WriteRune('=')
+        progressItrs++
     }
 
     buff.WriteRune('>')
 
-    for i := float64(0); i < BarSize - percent * BarSize; i++ {
+    for i := uint8(0); i < uint8(BarSize) - progressItrs; i++ {
         buff.WriteRune(' ')
     }
 
@@ -57,14 +58,14 @@ func formatSize(size uint64) string {
 
     switch {
     case fSize < 1000:
-        return fmt.Sprintf("%d B", size)
+        return fmt.Sprintf("%6d B ", size)
     case fSize < math.Pow(1000, 2):
-        return fmt.Sprintf("%.2f KB", fSize / 1000)
+        return fmt.Sprintf("%6.2f KB", fSize / 1000)
     case fSize < math.Pow(1000, 3):
-        return fmt.Sprintf("%.2f MB", fSize / math.Pow(1000, 2))
+        return fmt.Sprintf("%6.2f MB", fSize / math.Pow(1000, 2))
     case fSize < math.Pow(1000, 4):
-        return fmt.Sprintf("%.2f GB", fSize / math.Pow(1000, 3))
+        return fmt.Sprintf("%6.2f GB", fSize / math.Pow(1000, 3))
     default:
-        return fmt.Sprintf("%.2f TB", fSize / math.Pow(1000, 4))
+        return fmt.Sprintf("%6.2f TB", fSize / math.Pow(1000, 4))
     }
 }
