@@ -15,6 +15,7 @@ const (
 // compatibility information
 var (
     appCompatibility = map[string][]string{
+        "0.1.0": []string{"0.1.0"},
         "0.2.0": []string{"0.2.0"},
     }
 )
