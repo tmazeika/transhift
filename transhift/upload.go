@@ -75,8 +75,10 @@ func Upload(c *cli.Context) {
     peer := &DownloadPeer{}
     fmt.Print("Connecting to peer... ")
     peer.Connect(args)
+    defer peer.conn.Close()
     msgCh := peer.ReceiveMessages()
     file, err := os.Open(args.AbsFilePath())
+    defer file.Close()
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)

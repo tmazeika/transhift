@@ -101,6 +101,7 @@ func Download(c *cli.Context) {
     peer := &UploadPeer{}
     fmt.Print("Connecting to peer... ")
     err := peer.Connect(args)
+    defer peer.conn.Close()
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
