@@ -7,7 +7,6 @@ import (
     "bufio"
     "fmt"
     "os"
-    "bytes"
 )
 
 type UploadArgs struct {
@@ -16,11 +15,11 @@ type UploadArgs struct {
     filePath string
 }
 
-func (a *UploadArgs) PasswordHash() []byte {
-    return calculateStringHash(a.password)
+func (a UploadArgs) PasswordHash() []byte {
+    return calculateStringChecksum(a.password)
 }
 
-func (a *UploadArgs) AbsFilePath() string {
+func (a UploadArgs) AbsFilePath() string {
     filePath, _ := filepath.Abs(a.filePath)
     return filePath
 }
@@ -41,50 +40,31 @@ func (p *DownloadPeer) Connect(args UploadArgs) {
     p.writer = bufio.NewWriter(p.conn)
 }
 
-func (p *DownloadPeer) ReceiveMetaInfo() {
-    const ExpectedNLCount = 4
-
-    var buffer bytes.Buffer
-
-    for i := 0; i < ExpectedNLCount; i++ {
-        line, err := p.reader.ReadBytes('\n')
-
-        if err != nil {
-            fmt.Fprintln(os.Stderr, err)
-            os.Exit(1)
-        }
-
-        buffer.Write(line)
-    }
-
-    p.metaInfo = &ProtoMetaInfo{}
-    p.metaInfo.Deserialize(buffer.Bytes())
+func (p *DownloadPeer) SendMetaInfo(metaInfo *ProtoMetaInfo) {
+    p.writer.Write(metaInfo.Serialize())
+    p.writer.Flush()
 }
 
-func (p *DownloadPeer) ReceiveChunks() chan *ProtoChunk {
-    ch := make(chan *ProtoChunk)
-    var bytesRead uint64
+func (p *DownloadPeer) SendChunk(chunk *ProtoChunk) {
+    p.writer.Write(chunk.Serialize())
+    p.writer.Flush()
+}
+
+func (p *DownloadPeer) ReceiveMessages() chan byte {
+    ch := make(chan byte)
 
     go func() {
-        for bytesRead < p.metaInfo.fileSize {
-            adjustedChunkSize := uint64Min(p.metaInfo.fileSize - bytesRead, ProtoChunkSize)
-            chunkBuffer := make([]byte, adjustedChunkSize)
-            var chunkBytesRead uint64
-
-            for chunkBytesRead < adjustedChunkSize {
-                subChunkBytesRead, _ := p.reader.Read(chunkBuffer[chunkBytesRead:])
-                chunkBytesRead += subChunkBytesRead
-            }
-
-            bytesRead += adjustedChunkSize
-            chunk := &ProtoChunk{}
-            chunk.Deserialize(chunkBuffer)
-            ch <- &chunk
+        for {
+            buffer := make([]byte, 1)
+            p.reader.Read(buffer)
+            ch <- buffer[0]
         }
     }()
 
     return ch
 }
+
+/**/
 
 func Upload(c *cli.Context) {
     args := UploadArgs{
@@ -92,11 +72,110 @@ func Upload(c *cli.Context) {
         password: c.Args()[1],
         filePath: c.Args()[2],
     }
-}
 
-func uint64Min(x, y uint64) uint64 {
-    if x < y {
-        return x
+    peer := &DownloadPeer{}
+    fmt.Print("Connecting to peer... ")
+    peer.Connect(args)
+    msgCh := peer.ReceiveMessages()
+    file, err := os.Open(args.AbsFilePath())
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
     }
-    return y
+
+    fileInfo, err := file.Stat()
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+
+    peer.SendMetaInfo(&ProtoMetaInfo{
+        passwordChecksum: calculateStringChecksum(args.password),
+        fileName: file.Name(),
+        fileSize: uint64(fileInfo.Size()),
+        fileChecksum: calculateFileChecksum(file),
+    })
+
+    switch <- msgCh {
+    case ProtoMsgPasswordMatch:
+        fmt.Println("done")
+    case ProtoMsgPasswordMismatch:
+        fmt.Fprintln(os.Stderr, "password mismatch")
+        os.Exit(1)
+    default:
+        fmt.Fprintln(os.Stderr, "protocol error")
+        os.Exit(1)
+    }
+
+    fmt.Print("Uploading... ")
+    var bytesWritten uint64
+
+    for bytesWritten < fileInfo.Size() {
+        chunkBuffer := make([]byte, ProtoChunkSize)
+        chunkBytesWritten, err := file.ReadAt(chunkBuffer, bytesWritten)
+        bytesWritten += chunkBytesWritten
+
+        if err != nil {
+            fmt.Fprintln(os.Stderr, err)
+            peer.SendChunk(&ProtoChunk{
+                close: true,
+            })
+            os.Exit(1)
+        }
+
+        peer.SendChunk(&ProtoChunk{
+            close: false,
+            data:  chunkBuffer[:chunkBytesWritten],
+        })
+    }
+
+    fmt.Println("done")
+    fmt.Print("Verifying file... ")
+
+    switch <- msgCh {
+    case ProtoMsgChecksumMatch:
+        fmt.Println("done")
+    case ProtoMsgChecksumMismatch:
+        fmt.Fprintln(os.Stderr, "checksum mismatch")
+        os.Exit(1)
+    default:
+        fmt.Fprintln(os.Stderr, "protocol error")
+        os.Exit(1)
+    }
+
+    // verify password
+//    if ! bytes.Equal(args.PasswordHash(), peer.metaInfo.passwordHash) {
+//        fmt.Fprintln(os.Stderr, "password mismatch")
+//        os.Exit(1)
+//    }
+
+//    fmt.Println("done")
+//    fmt.Print("Downloading... ")
+//    file, err := os.Open(args.filePath)
+
+//    if err != nil {
+//        fmt.Fprintln(os.Stderr, err)
+//        os.Exit(1)
+//    }
+
+//    ch := peer.ReceiveChunks()
+//    var bytesRead uint64
+
+    /*for {
+        chunk := <- ch
+        file.WriteAt(chunk.data, int64(bytesRead))
+        bytesRead += uint64(len(chunk.data))
+
+        if chunk.last {
+            break
+        }
+    }
+
+    fmt.Println("done")
+    fmt.Print("Verifying file... ")
+    if ! bytes.Equal(calculateFileHash(file), peer.metaInfo.fileHash) {
+
+    }*/
 }
