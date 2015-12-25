@@ -74,7 +74,7 @@ func (m *ProtoMetaInfo) Deserialize(b []byte) {
 }
 
 func (m *ProtoMetaInfo) String() string {
-    return fmt.Sprintf("name: %s, size: %s", m.fileName, formatSize(m.fileSize))
+    return fmt.Sprintf("name: '%s', size: %s", m.fileName, formatSize(m.fileSize))
 }
 
 func uint64Min(x, y uint64) uint64 {

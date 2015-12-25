@@ -71,7 +71,7 @@ func Upload(c *cli.Context) {
     }
 
     peer := &DownloadPeer{}
-    fmt.Printf("Connecting to %s... ", args.peerHost)
+    fmt.Printf("Connecting to '%s'... ", args.peerHost)
     peer.Connect(args)
     defer peer.conn.Close()
     fmt.Println("done")
@@ -113,7 +113,7 @@ func Upload(c *cli.Context) {
         os.Exit(1)
     }
 
-    fmt.Printf("Uploading %s...\n", args.AbsFilePath())
+    fmt.Printf("Uploading '%s'...\n", args.AbsFilePath())
     var bytesWritten uint64
     progressBar := ProgressBar{
         current: &bytesWritten,
