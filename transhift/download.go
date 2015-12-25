@@ -97,6 +97,11 @@ func (p *UploadPeer) ReceiveChunks() chan *ProtoChunk {
     return ch
 }
 
+func (p *UploadPeer) SendMessage(message byte) {
+    p.writer.WriteByte(message)
+    p.writer.Flush()
+}
+
 func Download(c *cli.Context) {
     args := DownloadArgs{
         password:    c.Args()[0],
@@ -106,6 +111,18 @@ func Download(c *cli.Context) {
     peer := &UploadPeer{}
     fmt.Print("Connecting to peer...")
     peer.ReceiveMetaInfo()
+
+    // verify password
+    if bytes.Equal(args.PasswordHash(), peer.metaInfo.passwordChecksum) {
+        peer.SendMessage(ProtoMsgPasswordMatch)
+        fmt.Println("done")
+    } else {
+        peer.SendMessage(ProtoMsgPasswordMismatch)
+        fmt.Fprintln(os.Stderr, "password mismatch")
+        os.Exit(1)
+    }
+
+    fmt.Print("Downloading... ")
     file, err := os.Create(args.DestinationOrDef(peer.metaInfo.fileName))
 
     if err != nil {
@@ -113,7 +130,30 @@ func Download(c *cli.Context) {
         os.Exit(1)
     }
 
+    ch := peer.ReceiveChunks()
+    var bytesRead uint64
 
+    for {
+        chunk := <- ch
+        file.WriteAt(chunk.data, int64(bytesRead))
+        bytesRead += uint64(len(chunk.data))
+
+        if chunk.last {
+            break
+        }
+    }
+
+    fmt.Println("done")
+    fmt.Print("Verifying file... ")
+
+    if bytes.Equal(calculateFileChecksum(file), peer.metaInfo.fileChecksum) {
+        peer.SendMessage(ProtoMsgChecksumMatch)
+        fmt.Println("done")
+    } else {
+        peer.SendMessage(ProtoMsgChecksumMismatch)
+        fmt.Fprintln(os.Stderr, "checksum mismatch")
+        os.Exit(1)
+    }
 }
 
 func uint64Min(x, y uint64) uint64 {

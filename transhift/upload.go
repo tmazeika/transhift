@@ -144,38 +144,4 @@ func Upload(c *cli.Context) {
         fmt.Fprintln(os.Stderr, "protocol error")
         os.Exit(1)
     }
-
-    // verify password
-//    if ! bytes.Equal(args.PasswordHash(), peer.metaInfo.passwordHash) {
-//        fmt.Fprintln(os.Stderr, "password mismatch")
-//        os.Exit(1)
-//    }
-
-//    fmt.Println("done")
-//    fmt.Print("Downloading... ")
-//    file, err := os.Open(args.filePath)
-
-//    if err != nil {
-//        fmt.Fprintln(os.Stderr, err)
-//        os.Exit(1)
-//    }
-
-//    ch := peer.ReceiveChunks()
-//    var bytesRead uint64
-
-    /*for {
-        chunk := <- ch
-        file.WriteAt(chunk.data, int64(bytesRead))
-        bytesRead += uint64(len(chunk.data))
-
-        if chunk.last {
-            break
-        }
-    }
-
-    fmt.Println("done")
-    fmt.Print("Verifying file... ")
-    if ! bytes.Equal(calculateFileHash(file), peer.metaInfo.fileHash) {
-
-    }*/
 }
