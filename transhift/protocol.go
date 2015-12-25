@@ -63,12 +63,12 @@ func (m *ProtoMetaInfo) String() string {
         m.passwordHash, m.fileName, m.fileSize, m.fileHash)
 }
 
-type ProtoChunkInfo struct {
+type ProtoChunk struct {
     close bool
     data  []byte
 }
 
-func (c *ProtoChunkInfo) Serialize() []byte {
+func (c *ProtoChunk) Serialize() []byte {
     var buffer bytes.Buffer
 
     // close
@@ -79,14 +79,14 @@ func (c *ProtoChunkInfo) Serialize() []byte {
     return buffer.Bytes()
 }
 
-func (c *ProtoChunkInfo) Deserialize(b []byte) {
+func (c *ProtoChunk) Deserialize(b []byte) {
     // close
     c.close = Btobool(b[0])
     // data
     c.data = b[1:]
 }
 
-func (c *ProtoChunkInfo) String() string {
+func (c *ProtoChunk) String() string {
     return fmt.Sprintf("{close=%t, data=(len)%d}", c.close, len(c.data))
 }
 
