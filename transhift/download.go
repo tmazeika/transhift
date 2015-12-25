@@ -99,7 +99,7 @@ func Download(c *cli.Context) {
     }
 
     peer := &UploadPeer{}
-    fmt.Print("Connecting to peer... ")
+    fmt.Print("Listening for peer... ")
     err := peer.Connect(args)
     defer peer.conn.Close()
 
@@ -108,12 +108,14 @@ func Download(c *cli.Context) {
         os.Exit(1)
     }
 
+    fmt.Println("done")
+    fmt.Print("Waiting for file info... ")
     peer.ReceiveMetaInfo()
 
     // verify password
     if bytes.Equal(args.PasswordHash(), peer.metaInfo.passwordChecksum) {
         peer.SendMessage(ProtoMsgPasswordMatch)
-        fmt.Println("done")
+        fmt.Println(peer.metaInfo)
     } else {
         peer.SendMessage(ProtoMsgPasswordMismatch)
         fmt.Fprintln(os.Stderr, "password mismatch")

@@ -41,7 +41,7 @@ func (p *ProgressBar) Update() {
         buff.WriteRune(' ')
     }
 
-    buff.WriteString(fmt.Sprintf("] %s / %s", formatSize(*p.current), formatSize(p.total)))
+    buff.WriteString(fmt.Sprintf("] %s / %s", formatSizePadded(*p.current), formatSizePadded(p.total)))
     fmt.Println(buff.String())
 }
 
@@ -53,7 +53,7 @@ func (p *ProgressBar) Stop(forceUpdate bool) {
     }
 }
 
-func formatSize(size uint64) string {
+func formatSizePadded(size uint64) string {
     fSize := float64(size)
 
     switch {
@@ -67,5 +67,22 @@ func formatSize(size uint64) string {
         return fmt.Sprintf("%6.2f GB", fSize / math.Pow(1000, 3))
     default:
         return fmt.Sprintf("%6.2f TB", fSize / math.Pow(1000, 4))
+    }
+}
+
+func formatSize(size uint64) string {
+    fSize := float64(size)
+
+    switch {
+    case fSize < 1000:
+        return fmt.Sprintf("%d B", size)
+    case fSize < math.Pow(1000, 2):
+        return fmt.Sprintf("%.2f KB", fSize / 1000)
+    case fSize < math.Pow(1000, 3):
+        return fmt.Sprintf("%.2f MB", fSize / math.Pow(1000, 2))
+    case fSize < math.Pow(1000, 4):
+        return fmt.Sprintf("%.2f GB", fSize / math.Pow(1000, 3))
+    default:
+        return fmt.Sprintf("%.2f TB", fSize / math.Pow(1000, 4))
     }
 }

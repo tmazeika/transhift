@@ -63,8 +63,6 @@ func (p *DownloadPeer) ReceiveMessages() chan byte {
     return ch
 }
 
-/**/
-
 func Upload(c *cli.Context) {
     args := UploadArgs{
         peerHost: c.Args()[0],
@@ -73,11 +71,14 @@ func Upload(c *cli.Context) {
     }
 
     peer := &DownloadPeer{}
-    fmt.Print("Connecting to peer... ")
+    fmt.Printf("Connecting to %s... ", args.peerHost)
     peer.Connect(args)
     defer peer.conn.Close()
+    fmt.Println("done")
+    fmt.Print("Sending file info... ")
+
     msgCh := peer.ReceiveMessages()
-    file, err := os.Open(args.AbsFilePath())
+    file, err := os.Open(args.filePath)
     defer file.Close()
 
     if err != nil {
@@ -92,16 +93,18 @@ func Upload(c *cli.Context) {
         os.Exit(1)
     }
 
-    peer.SendMetaInfo(&ProtoMetaInfo{
+    metaInfo := &ProtoMetaInfo{
         passwordChecksum: calculateStringChecksum(args.password),
-        fileName: file.Name(),
+        fileName: filepath.Base(file.Name()),
         fileSize: uint64(fileInfo.Size()),
         fileChecksum: calculateFileChecksum(file),
-    })
+    }
+
+    peer.SendMetaInfo(metaInfo)
 
     switch <- msgCh {
     case ProtoMsgPasswordMatch:
-        fmt.Println("done")
+        fmt.Println(metaInfo)
     case ProtoMsgPasswordMismatch:
         fmt.Fprintln(os.Stderr, "password mismatch")
         os.Exit(1)
@@ -110,7 +113,7 @@ func Upload(c *cli.Context) {
         os.Exit(1)
     }
 
-    fmt.Println("Uploading... ")
+    fmt.Printf("Uploading %s...\n", args.AbsFilePath())
     var bytesWritten uint64
     progressBar := ProgressBar{
         current: &bytesWritten,
