@@ -98,13 +98,6 @@ func Upload(c *cli.Context) {
         fileChecksum: calculateFileChecksum(file),
     })
 
-    fmt.Println(ProtoMetaInfo{
-        passwordChecksum: calculateStringChecksum(args.password),
-        fileName: file.Name(),
-        fileSize: uint64(fileInfo.Size()),
-        fileChecksum: calculateFileChecksum(file),
-    })
-
     switch <- msgCh {
     case ProtoMsgPasswordMatch:
         fmt.Println("done")
