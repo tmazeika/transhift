@@ -121,6 +121,7 @@ func Download(c *cli.Context) {
 
     fmt.Println("Downloading... ")
     file, err := os.Create(args.DestinationOrDef(peer.metaInfo.fileName))
+    defer file.Close()
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
