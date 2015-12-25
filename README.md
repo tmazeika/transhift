@@ -32,3 +32,5 @@ curl -s https://raw.githubusercontent.com/transhift/transhift/master/install.sh 
 Or run each command individually from the [install script](https://github.com/transhift/transhift/blob/master/install.sh).
 
 To test it out, run `transhift --version` and you should see `Transhift version 0.1.0`.
+
+**Disclaimer:** The software is in pre-release. *Many* changes are expected until v1.0.0. With that said, *do not* use the software to send sensitive files until v1.0.0 is released.
