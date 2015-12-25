@@ -119,7 +119,7 @@ func Download(c *cli.Context) {
         os.Exit(1)
     }
 
-    fmt.Print("Downloading... ")
+    fmt.Println("Downloading... ")
     file, err := os.Create(args.DestinationOrDef(peer.metaInfo.fileName))
 
     if err != nil {
@@ -129,6 +129,7 @@ func Download(c *cli.Context) {
 
     ch := peer.ReceiveChunks()
     var bytesRead uint64
+    pbarStopCh := showProgressBar(&bytesRead, peer.metaInfo.fileSize)
 
     for bytesRead < peer.metaInfo.fileSize {
         chunk := <- ch
@@ -136,8 +137,8 @@ func Download(c *cli.Context) {
         bytesRead += uint64(len(chunk))
     }
 
-    fmt.Println("done")
-    fmt.Print("Verifying file... ")
+    pbarStopCh <- true
+    fmt.Print("\nVerifying file... ")
 
     if bytes.Equal(calculateFileChecksum(file), peer.metaInfo.fileChecksum) {
         peer.SendMessage(ProtoMsgChecksumMatch)

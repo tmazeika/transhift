@@ -28,7 +28,6 @@ type DownloadPeer struct {
     conn     net.Conn
     reader   *bufio.Reader
     writer   *bufio.Writer
-    metaInfo *ProtoMetaInfo
 }
 
 func (p *DownloadPeer) Connect(args UploadArgs) {
@@ -109,8 +108,9 @@ func Upload(c *cli.Context) {
         os.Exit(1)
     }
 
-    fmt.Print("Uploading... ")
+    fmt.Println("Uploading... ")
     var bytesWritten uint64
+    pbarStopCh := showProgressBar(&bytesWritten, uint64(fileInfo.Size()))
 
     for bytesWritten < uint64(fileInfo.Size()) {
         adjustedChunkSize := uint64Min(uint64(fileInfo.Size()) - bytesWritten, ProtoChunkSize)
@@ -120,8 +120,8 @@ func Upload(c *cli.Context) {
         peer.SendChunk(chunkBuffer)
     }
 
-    fmt.Println("done")
-    fmt.Print("Verifying file... ")
+    pbarStopCh <- true
+    fmt.Print("\nVerifying file... ")
 
     switch <- msgCh {
     case ProtoMsgChecksumMatch:
