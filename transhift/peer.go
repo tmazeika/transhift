@@ -196,8 +196,8 @@ type FileChunk struct {
     data []byte
 }
 
-func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) (ch chan FileChunk) {
-    ch = make(chan FileChunk)
+func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) (ch chan *FileChunk) {
+    ch = make(chan *FileChunk)
 
     var totalRead uint64
 
@@ -205,12 +205,16 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) (ch chan FileChunk) {
         for totalRead < d.metaInfo.fileSize {
             adjustedChunkSize := min(d.metaInfo.fileSize - totalRead, chunkSize)
 
+            fmt.Println("adjustedChunkSize", adjustedChunkSize)
+
             dataBuff := make([]byte, adjustedChunkSize)
 
             var chunkRead uint64
 
             for chunkRead < adjustedChunkSize {
+                fmt.Println("chunkRead", chunkRead)
                 dataRead, err := d.reader.Read(dataBuff[chunkRead:])
+                fmt.Println("dataRead", dataRead)
 
                 if err != nil {
                     fmt.Fprintln(os.Stderr, "Error reading bytes: ", err)
@@ -220,12 +224,20 @@ func (d *UploadPeer) ReceiveFileChunks(chunkSize uint64) (ch chan FileChunk) {
                 chunkRead += uint64(dataRead)
             }
 
-            ch <- FileChunk{
+            fmt.Println("chunkRead", chunkRead)
+
+            ch <- &FileChunk{
                 good: dataBuff[0] == Continue,
                 data: dataBuff[1:],
             }
 
+            fmt.Println(FileChunk{
+                good: dataBuff[0] == Continue,
+                data: dataBuff[1:],
+            })
+
             totalRead += chunkRead
+            fmt.Println("totalRead", totalRead)
         }
     }()
 

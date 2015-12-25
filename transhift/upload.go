@@ -51,8 +51,10 @@ func Upload(c *cli.Context) {
     progressBarStopCh := showProgressBar(&currentBytes, totalBytes)
 
     for currentBytes < totalBytes {
-        chunkBuff := make([]byte, chunkSize)
-        chunkBuffSize, _ := file.ReadAt(chunkBuff, int64(totalBytes))
+        adjustedChunkSize := min(totalBytes - currentBytes, chunkSize)
+
+        chunkBuff := make([]byte, adjustedChunkSize)
+        chunkBuffSize, _ := file.ReadAt(chunkBuff, int64(currentBytes))
 
         downloadPeer.SendFileChunk(&FileChunk{
             good: true,

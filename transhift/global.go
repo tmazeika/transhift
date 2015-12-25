@@ -37,13 +37,15 @@ func showProgressBar(current *uint64, total uint64) (stopCh chan bool) {
         var buff bytes.Buffer
         percent := float64(*current) / float64(total)
 
-        buff.WriteString(fmt.Sprintf("\r%.f%% [", percent))
+        buff.WriteString(fmt.Sprintf("\r%.f%% [", percent * 100))
 
         const BarSize = float64(50)
 
-        for i := float64(0); i < percent * BarSize; i++ {
+        for i := float64(0); i < percent * BarSize - 1; i++ {
             buff.WriteRune('=')
         }
+
+        buff.WriteRune('>')
 
         for i := float64(0); i < BarSize - percent * BarSize; i++ {
             buff.WriteRune(' ')

@@ -11,7 +11,8 @@ import (
 )
 
 const (
-    chunkSize uint64 = 1024
+//    chunkSize uint64 = 1024
+    chunkSize uint64 = 16
 )
 
 type PortMapping struct {
@@ -90,9 +91,9 @@ func Download(c *cli.Context) {
     pass := c.Args()[0]
     destination := c.String("destination")
 
-    portMapping := PortMapping{port: port}
-    portMapping.Add()
-    defer portMapping.Remove()
+//    portMapping := PortMapping{port: port}
+//    portMapping.Add()
+//    defer portMapping.Remove()
 
     uploadPeer := UploadPeer{}
 
