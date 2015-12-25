@@ -143,8 +143,6 @@ type UploadPeer struct {
     conn     net.Conn
     reader   *bufio.Reader
     writer   *bufio.Writer
-    in       chan []byte
-
     metaInfo *MetaInfo
 }
 
@@ -163,35 +161,33 @@ func (d *UploadPeer) Connect(port uint16) error {
 
     d.reader = bufio.NewReader(d.conn)
     d.writer = bufio.NewWriter(d.conn)
-    d.in = make(chan []byte)
-
-    go func() {
-        for {
-            // read line from connection up to NL
-            data, err := d.reader.ReadBytes('\n')
-
-            if len(data) <= 1 {
-                continue
-            }
-
-            if err != nil {
-                fmt.Fprintln(os.Stderr, "Error reading line: ", err)
-                break
-            }
-
-            d.in <- data[:len(data) - 1]
-        }
-    }()
 
     return nil
 }
 
 func (d *UploadPeer) ReceiveMetaInfo() {
+    in := make(chan []byte)
+
+    const ExpectedReads = 4
+
+    go func() {
+        for i := 0; i < ExpectedReads; i++ {
+            data, err := d.reader.ReadBytes('\n')
+
+            if err != nil {
+                fmt.Fprintln(os.Stderr, "Error receiving meta info: ", err)
+                break
+            }
+
+            in <- data[:len(data) - 1]
+        }
+    }()
+
     d.metaInfo = &MetaInfo{
-        passHash: <- d.in,
-        fileName: string(<- d.in),
-        fileSize: binary.BigEndian.Uint64(<- d.in),
-        fileHash: <- d.in,
+        passHash: <- in,
+        fileName: string(<- in),
+        fileSize: binary.BigEndian.Uint64(<- in),
+        fileHash: <- in,
     }
 }
 
