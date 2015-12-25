@@ -9,7 +9,7 @@ import (
 
 // application information
 const (
-    AppVersion = "0.3.0"
+    AppVersion = "0.2.0"
 )
 
 // compatibility information
