@@ -8,22 +8,34 @@ import (
 )
 
 type Storage struct {
+    customDir *string
+
     config Config
 }
 
-func StorageDir() (*string, error) {
-    const DirName = ".transhift"
+type Config struct {
+    PuncherHost string
+    PuncherPort uint16
+}
 
-    user, err := user.Current()
+func (s *Storage) Dir() (*string, error) {
+    const DefDirName = ".transhift"
+    var dirPath string
 
-    if err != nil {
-        return nil, err
+    if s.customDir == nil {
+        user, err := user.Current()
+
+        if err != nil {
+            return nil, err
+        }
+
+        dirPath = filepath.Join(user.HomeDir, DefDirName)
+    } else {
+        dirPath = *s.customDir
     }
 
-    dirPath := filepath.Join(user.HomeDir, DirName)
-
     if info, err := os.Stat(dirPath); os.IsNotExist(err) || (info != nil && ! info.IsDir()) {
-        err = os.Mkdir(dirPath, 0700)
+        err = os.MkdirAll(dirPath, 0700)
 
         if err != nil {
             return nil, err
@@ -33,16 +45,15 @@ func StorageDir() (*string, error) {
     return &dirPath, nil
 }
 
-func ConfigFile() (*os.File, error) {
+func (s *Storage) ConfigFile() (*os.File, error) {
     const FileName = "config.json"
-
-    storageDir, err := StorageDir()
+    dir, err := s.Dir()
 
     if err != nil {
         return nil, err
     }
 
-    filePath := filepath.Join(storageDir, FileName)
+    filePath := filepath.Join(dir, FileName)
 
     if info, err := os.Stat(filePath); os.IsNotExist(err) || (info != nil && ! info.Mode().IsRegular()) {
         return os.Create(filePath)
@@ -51,22 +62,16 @@ func ConfigFile() (*os.File, error) {
     return os.Open(filePath)
 }
 
-type Config struct {
-    PuncherHost string
-    PuncherPort uint16
-}
-
-func ReadConfig() (*Config, error) {
-    configFile, err := ConfigFile()
+func (s *Storage) Config() (*Config, error) {
+    file, err := s.ConfigFile()
 
     if err != nil {
         return nil, err
     }
 
-    defer configFile.Close()
-
+    defer file.Close()
     config := &Config{}
-    err = json.NewDecoder(configFile).Decode(config)
+    err = json.NewDecoder(file).Decode(config)
 
     if err != nil {
         return nil, err
