@@ -11,13 +11,13 @@ type Storage struct {
     config Config
 }
 
-func StorageDirectory() (string, error) {
+func StorageDir() (*string, error) {
     const DirName = ".transhift"
 
     user, err := user.Current()
 
     if err != nil {
-        return "", err
+        return nil, err
     }
 
     dirPath := filepath.Join(user.HomeDir, DirName)
@@ -26,38 +26,34 @@ func StorageDirectory() (string, error) {
         err = os.Mkdir(dirPath, 0700)
 
         if err != nil {
-            return "", err
+            return nil, err
         }
     }
 
-    return dirPath, nil
+    return &dirPath, nil
 }
 
-type Config struct {
-    PuncherHost string
-    PuncherPort uint16
-}
-
-func (Storage) ConfigFile() (*os.File, error) {
-    const AppDir = ".transhift"
+func ConfigFile() (*os.File, error) {
     const FileName = "config.json"
 
-    user, err := user.Current()
+    storageDir, err := StorageDir()
 
     if err != nil {
         return nil, err
     }
 
-    os.Mkdir(filepath.Join(user.HomeDir, AppDir), 0700)
+    filePath := filepath.Join(storageDir, FileName)
 
-    filePath := filepath.Join(user.HomeDir, AppDir, FileName)
-    file, err := os.Open(filePath)
-
-    if err != nil {
+    if info, err := os.Stat(filePath); os.IsNotExist(err) || (info != nil && ! info.Mode().IsRegular()) {
         return os.Create(filePath)
     }
 
-    return file, nil
+    return os.Open(filePath)
+}
+
+type Config struct {
+    PuncherHost string
+    PuncherPort uint16
 }
 
 func ReadConfig() (*Config, error) {
