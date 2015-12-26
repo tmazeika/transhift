@@ -25,7 +25,6 @@ func ConfigFile() (*os.File, error) {
     os.Mkdir(filepath.Join(user.HomeDir, AppDir), 0700)
 
     filePath := filepath.Join(user.HomeDir, AppDir, FileName)
-
     file, err := os.Open(filePath)
 
     if err != nil {
