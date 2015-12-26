@@ -57,33 +57,16 @@ type Config struct {
 }
 
 func ReadConfig() (*Config, error) {
-    const AppDir = ".transhift"
-    const FileName = "config.json"
-
-    user, err := user.Current()
+    configFile, err := ConfigFile()
 
     if err != nil {
         return nil, err
     }
 
-    os.Mkdir(filepath.Join(user.HomeDir, AppDir), 0700)
-
-    filePath := filepath.Join(user.HomeDir, AppDir, FileName)
-    file, err := os.Open(filePath)
-
-    if err != nil {
-        file, err = os.Create(filePath)
-    }
-
-    file, err := ConfigFile()
-    defer file.Close()
-
-    if err != nil {
-        return nil, err
-    }
+    defer configFile.Close()
 
     config := &Config{}
-    err = json.NewDecoder(file).Decode(config)
+    err = json.NewDecoder(configFile).Decode(config)
 
     if err != nil {
         return nil, err
