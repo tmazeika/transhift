@@ -112,7 +112,7 @@ func (p *UploadPeer) ReceiveChunks() chan []byte {
 }
 
 func (p *UploadPeer) SendMessage(message ProtoMsg) {
-    p.writer.Write([]byte{byte(message)})
+    p.conn.Write([]byte{byte(message)})
 }
 
 func Download(c *cli.Context) {
