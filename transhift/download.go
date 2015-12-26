@@ -35,7 +35,7 @@ func (p *UploadPeer) PunchHole() (uid, localPort string, err error) {
     }
 
     defer conn.Close()
-    conn.Write([]byte{byte(ProtoMsgClientTypeDL)})
+    p.SendMessage(ProtoMsgClientTypeDL)
     uidBuffer := make([]byte, ProtoPeerUIDLen)
     conn.Read(uidBuffer)
 
