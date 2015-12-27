@@ -68,6 +68,10 @@ func (s *Storage) ConfigFile() (*os.File, error) {
         }
 
         err = ioutil.WriteFile(filePath, data, 0644)
+
+        if err != nil {
+            return nil, err
+        }
     }
 
     return getFile(filePath)
