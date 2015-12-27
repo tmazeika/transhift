@@ -5,6 +5,7 @@ import (
     "encoding/binary"
     "fmt"
     "bufio"
+    "encoding"
 )
 
 const (
@@ -35,12 +36,6 @@ const (
     ChecksumMismatch   ProtocolMessage = 0x02
     ChecksumMatch      ProtocolMessage = 0x03
 )
-
-type Serializable interface {
-    Serialize() []byte
-
-    Deserialize([]byte)
-}
 
 func CheckCompatibility(inOut bufio.ReadWriter) error {
     scanner := bufio.NewScanner(inOut.Reader)
@@ -80,34 +75,62 @@ type FileInfo struct {
     checksum []byte
 }
 
-func (m FileInfo) Serialize() []byte {
+func (m FileInfo) MarshalBinary() (data []byte, err error) {
     var buffer bytes.Buffer
 
     // name
-    buffer.WriteString(m.name)
-    buffer.WriteRune('\n')
-    // size
-    buffer.Write(uint64ToBytes(m.size))
-    buffer.WriteRune('\n')
-    // checksum
-    buffer.Write(m.checksum)
-    buffer.WriteRune('\n')
+    if _, err := buffer.WriteString(m.name); err != nil {
+        return err
+    }
 
-    return buffer.Bytes()
+    if _, err := buffer.WriteRune('\n'); err != nil {
+        return err
+    }
+
+    // size
+    if _, err := buffer.Write(uint64ToBytes(m.size)); err != nil {
+        return err
+    }
+
+    if _, err := buffer.WriteRune('\n'); err != nil {
+        return err
+    }
+
+    // checksum
+    if _, err := buffer.Write(m.checksum); err != nil {
+        return err
+    }
+
+    if _, err := buffer.WriteRune('\n'); err != nil {
+        return err
+    }
+
+    return buffer.Bytes(), nil
 }
 
-func (m *FileInfo) Deserialize(b []byte) {
-    scanner := bufio.NewScanner(bytes.NewReader(b))
+func (m *FileInfo) UnmarshalBinary(data []byte) error {
+    scanner := bufio.NewScanner(bytes.NewReader(data))
 
     // name
-    scanner.Scan()
+    if ! scanner.Scan() {
+        return scanner.Err()
+    }
+
     m.name = scanner.Text()
     // size
-    scanner.Scan()
+    if ! scanner.Scan() {
+        return scanner.Err()
+    }
+
     m.size = bytesToUint64(scanner.Bytes())
     // checksum
-    scanner.Scan()
+    if ! scanner.Scan() {
+        return scanner.Err()
+    }
+
     m.checksum = scanner.Bytes()
+
+    return nil
 }
 
 func (m *FileInfo) String() string {
