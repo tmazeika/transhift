@@ -42,10 +42,21 @@ const (
 func CheckCompatibility(inOut bufio.ReadWriter) error {
     scanner := bufio.NewScanner(inOut.Reader)
 
-    inOut.WriteString(Version)
-    inOut.WriteRune('\n')
-    inOut.Flush()
-    scanner.Scan()
+    if _, err := inOut.WriteString(Version); err != nil {
+        return err
+    }
+
+    if _, err := inOut.WriteRune('\n'); err != nil {
+        return err
+    }
+
+    if err := inOut.Flush(); err != nil {
+        return err
+    }
+
+    if ! scanner.Scan() {
+        return scanner.Err()
+    }
 
     remoteVersion := scanner.Text()
     var localCompatible bool
@@ -57,10 +68,19 @@ func CheckCompatibility(inOut bufio.ReadWriter) error {
         }
     }
 
-    inOut.WriteByte(boolToByte(localCompatible))
-    inOut.Flush()
+    if err := inOut.WriteByte(boolToByte(localCompatible)); err != nil {
+        return err
+    }
+
+    if err := inOut.Flush(); err != nil {
+        return err
+    }
+
     scanner.Split(bufio.ScanBytes)
-    scanner.Scan()
+
+    if ! scanner.Scan() {
+        return scanner.Err()
+    }
 
     remoteCompatible := byteToBool(scanner.Bytes()[0])
 
