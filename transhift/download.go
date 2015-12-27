@@ -8,6 +8,7 @@ import (
     "fmt"
     "os"
     "crypto/tls"
+//    "time"
 )
 
 type DownloadArgs struct {
@@ -24,8 +25,8 @@ func (a DownloadArgs) DestinationOrDef(def string) string {
 }
 
 type UploadPeer struct {
-    conn     tls.Conn
-    inOut    bufio.ReadWriter
+    conn     *tls.Conn
+    inOut    *bufio.ReadWriter
     fileInfo FileInfo
 }
 
@@ -59,7 +60,7 @@ func (UploadPeer) PunchHole(config Config) (uid string, localPort string, err er
 }
 
 func (p *UploadPeer) Connect(port string, cert tls.Certificate) error {
-    listener, err := net.Listen("tcp", net.JoinHostPort("", port))
+    listener, err := net.Listen("tcp", net.JoinHostPort("0.0.0.0", port))
 
     if err != nil {
         return err
@@ -71,10 +72,14 @@ func (p *UploadPeer) Connect(port string, cert tls.Certificate) error {
         return err
     }
 
-    p.conn = *tls.Server(conn, &tls.Config{
+    p.conn = tls.Server(conn, &tls.Config{
         Certificates: []tls.Certificate{cert},
+        MinVersion: tls.VersionTLS12,
     })
-    p.inOut = *bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+    p.conn.Handshake()
+
+    p.inOut = bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
     return CheckCompatibility(p.inOut)
 }
@@ -145,6 +150,8 @@ func Download(c *cli.Context) {
 
     peer := UploadPeer{}
     uid, localPort, err := peer.PunchHole(*config)
+
+    fmt.Println("DEBUG: localPort", localPort)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, "Unable to retrieve UID")

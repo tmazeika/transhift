@@ -39,9 +39,7 @@ const (
     ChecksumMatch      ProtocolMessage = 0x03
 )
 
-func CheckCompatibility(inOut bufio.ReadWriter) error {
-    scanner := bufio.NewScanner(inOut.Reader)
-
+func CheckCompatibility(inOut *bufio.ReadWriter) error {
     if _, err := inOut.WriteString(Version); err != nil {
         return err
     }
@@ -53,6 +51,8 @@ func CheckCompatibility(inOut bufio.ReadWriter) error {
     if err := inOut.Flush(); err != nil {
         return err
     }
+
+    scanner := bufio.NewScanner(inOut.Reader)
 
     if ! scanner.Scan() {
         return scanner.Err()

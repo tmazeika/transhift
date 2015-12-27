@@ -24,7 +24,7 @@ func (u UploadArgs) AbsFilePath() string {
 
 type DownloadPeer struct {
     conn  *tls.Conn
-    inOut bufio.ReadWriter
+    inOut *bufio.ReadWriter
 }
 
 func (DownloadPeer) PunchHole(peerUid string, config *Config) (remoteAddr string, err error) {
@@ -54,7 +54,7 @@ func (DownloadPeer) PunchHole(peerUid string, config *Config) (remoteAddr string
     scanner := bufio.NewScanner(bufio.NewReader(conn))
 
     if ! scanner.Scan() {
-        return "", err
+        return "", scanner.Err()
     }
 
     return scanner.Text(), nil
@@ -69,11 +69,14 @@ func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
                 Certificates: []tls.Certificate{cert},
                 // TODO: baaaaaad
                 InsecureSkipVerify: true,
+                MinVersion: tls.VersionTLS12,
             })
         }
     }
 
-    p.inOut = *bufio.NewReadWriter(bufio.NewReader(p.conn), bufio.NewWriter(p.conn))
+    p.conn.Handshake()
+
+    p.inOut = bufio.NewReadWriter(bufio.NewReader(p.conn), bufio.NewWriter(p.conn))
 
     return CheckCompatibility(p.inOut)
 }
