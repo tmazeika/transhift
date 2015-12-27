@@ -15,7 +15,8 @@ import (
 type Storage struct {
     customDir string
 
-    config Config
+    config *Config
+    privKey *rsa.PrivateKey
 }
 
 type Config struct {
@@ -65,10 +66,11 @@ func (s *Storage) Config() (*Config, error) {
         return nil, err
     }
 
+    s.config = config
     return config, nil
 }
 
-func (s *Storage) Crypto() error {
+func (s *Storage) PrivKey() (*rsa.PrivateKey, error) {
     const KeyBits = 4096
     const PrivFileName = "priv.pem"
     const PubFileName = "pub.pem"
@@ -81,29 +83,46 @@ func (s *Storage) Crypto() error {
     privFilePath := filepath.Join(dir, PrivFileName)
     pubFilePath := filepath.Join(dir, PubFileName)
 
-    var priv *rsa.PrivateKey
-
     if ! fileExists(privFilePath, false) {
-        priv, err = rsa.GenerateKey(rand.Reader, KeyBits)
+        s.privKey, err = rsa.GenerateKey(rand.Reader, KeyBits)
 
         if err != nil {
-            return err
+            return nil, err
         }
 
         privPemData := pem.EncodeToMemory(&pem.Block{
             Type: "RSA PRIVATE KEY",
-            Bytes: x509.MarshalPKCS1PrivateKey(priv),
+            Bytes: x509.MarshalPKCS1PrivateKey(s.privKey),
         })
 
         err = ioutil.WriteFile(privFilePath, privPemData, 0600)
 
         if err != nil {
-            return err
+            return nil, err
+        }
+    } else {
+        privFile, err := getFile(privFilePath)
+        defer privFile.Close()
+
+        if err != nil {
+            return nil, err
+        }
+
+        bytes, err := ioutil.ReadAll(privFile)
+
+        if err != nil {
+            return nil, err
+        }
+
+        s.privKey, err = x509.ParsePKCS1PrivateKey(bytes)
+
+        if err != nil {
+            return nil, err
         }
     }
 
     if ! fileExists(pubFilePath, false) {
-        pub, err := x509.MarshalPKIXPublicKey(&priv.PublicKey)
+        pub, err := x509.MarshalPKIXPublicKey(&s.privKey.PublicKey)
 
         if err != nil {
             return err
@@ -121,7 +140,7 @@ func (s *Storage) Crypto() error {
         }
     }
 
-    return nil
+    return s.privKey
 }
 
 func getFile(path string) (*os.File, error) {
