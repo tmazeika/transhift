@@ -12,7 +12,7 @@ import (
 )
 
 type UploadArgs struct {
-    peer     string
+    peerUid  string
     filePath string
     appDir   string
 }
@@ -50,68 +50,69 @@ func (DownloadPeer) PunchHole(peerUid string, config *Config) (remoteAddr string
     return scanner.Text(), nil
 }
 
-func (p *DownloadPeer) Connect(remoteAddr string, storage *Storage) error {
-    cert, err := storage.Crypto()
-
-    if err != nil {
-        return err
-    }
-
+func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
     for p.conn == nil {
         conn, err := net.Dial("tcp", remoteAddr)
 
         if err == nil {
-            p.conn = tls.Client(conn, &tls.Config{
+            p.conn = *tls.Client(conn, &tls.Config{
                 Certificates: []tls.Certificate{cert},
+                // TODO: baaaaaad
                 InsecureSkipVerify: true,
             })
         }
     }
 
-    p.reader = bufio.NewReader(p.conn)
-    p.writer = bufio.NewWriter(p.conn)
+    p.inOut = bufio.NewReadWriter(bufio.NewReader(&p.conn), bufio.NewWriter(&p.conn))
 
-    return CheckCompatibility(p.reader, p.writer)
+    return CheckCompatibility(p.inOut)
 }
 
-func (p *DownloadPeer) SendMetaInfo(metaInfo *FileInfo) {
-    p.conn.Write(metaInfo.Serialize())
+func (p DownloadPeer) SendFileInfo(fileInfo FileInfo) error {
+    data, err := fileInfo.MarshalBinary()
+
+    if err != nil {
+        return err
+    }
+
+    if _, err := p.conn.Write(data); err != nil {
+        return err
+    }
+
+    return nil
 }
 
-func (p *DownloadPeer) SendChunk(chunk []byte) {
-    p.conn.Write(chunk)
-}
+func (p DownloadPeer) ReceiveMessages() (ch chan ProtocolMessage) {
+    ch = make(chan ProtocolMessage)
+    scanner := bufio.NewScanner(p.inOut.Reader)
 
-func (p *DownloadPeer) ReceiveMessages() chan ProtocolMessage {
-    ch := make(chan ProtocolMessage)
+    scanner.Split(bufio.ScanBytes)
 
     go func() {
-        for {
-            buffer := make([]byte, 1)
-            p.conn.Read(buffer)
-            ch <- ProtocolMessage(buffer[0])
+        for scanner.Scan() {
+            ch <- ProtocolMessage(scanner.Bytes()[0])
         }
     }()
 
-    return ch
+    return
 }
 
 func Upload(c *cli.Context) {
     args := UploadArgs{
-        peer:     c.Args()[0],
+        peerUid:     c.Args()[0],
         filePath: c.Args()[1],
         appDir:   c.GlobalString("app-dir"),
     }
 
-    if len(args.peer) != ProtoPeerUIDLen {
-        fmt.Fprintf(os.Stderr, "Peer UID should be %d characters\n", ProtoPeerUIDLen)
+    if len(args.peerUid) != UidLength {
+        fmt.Fprintf(os.Stderr, "Peer UID should be %d characters\n", UidLength)
         os.Exit(1)
     }
 
-    storage := &Storage{
+    peer := DownloadPeer{}
+    storage := Storage{
         customDir: args.appDir,
     }
-
     config, err := storage.Config()
 
     if err != nil {
@@ -119,8 +120,8 @@ func Upload(c *cli.Context) {
         os.Exit(1)
     }
 
-    peer := &DownloadPeer{}
     fmt.Print("Waiting for peer... ")
+
     remoteAddr, err := peer.PunchHole(args, config)
 
     if err != nil {
@@ -129,7 +130,8 @@ func Upload(c *cli.Context) {
     }
 
     fmt.Println("done")
-    fmt.Printf("Connecting to '%s'... ", args.peer)
+    fmt.Printf("Connecting to '%s'... ", args.peerUid)
+
     err = peer.Connect(remoteAddr, storage)
 
     if err != nil {
@@ -144,12 +146,13 @@ func Upload(c *cli.Context) {
 
     msgCh := peer.ReceiveMessages()
     file, err := os.Open(args.filePath)
-    defer file.Close()
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
         os.Exit(1)
     }
+
+    defer file.Close()
 
     fileInfo, err := file.Stat()
 
@@ -158,20 +161,22 @@ func Upload(c *cli.Context) {
         os.Exit(1)
     }
 
-    metaInfo := &FileInfo{
-        name: filepath.Base(file.Name()),
-        size: uint64(fileInfo.Size()),
+    metaInfo := FileInfo{
+        name:     filepath.Base(file.Name()),
+        size:     uint64(fileInfo.Size()),
         checksum: calculateFileChecksum(file),
     }
 
-    peer.SendMetaInfo(metaInfo)
+    peer.SendFileInfo(metaInfo)
     fmt.Println(metaInfo)
     fmt.Printf("Uploading '%s'...\n", args.AbsFilePath())
+
     var bytesWritten uint64
     progressBar := ProgressBar{
         current: &bytesWritten,
         total:   uint64(fileInfo.Size()),
     }
+
     progressBar.Start()
 
     for bytesWritten < uint64(fileInfo.Size()) {
@@ -179,7 +184,7 @@ func Upload(c *cli.Context) {
         chunkBuffer := make([]byte, adjustedChunkSize)
         chunkBytesWritten, _ := file.ReadAt(chunkBuffer, int64(bytesWritten))
         bytesWritten += uint64(chunkBytesWritten)
-        peer.SendChunk(chunkBuffer)
+        peer.conn.Write(chunkBuffer)
     }
 
     progressBar.Stop(true)

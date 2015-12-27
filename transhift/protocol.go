@@ -25,6 +25,9 @@ const (
     // ChunkSize is the number of bytes that are read from the file each
     // iteration of the upload loop.
     ChunkSize = 4096
+
+    // UidLength is the length of the UID that the puncher server issues.
+    UidLength = 16
 )
 
 type ProtocolMessage byte
