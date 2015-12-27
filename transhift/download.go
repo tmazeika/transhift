@@ -60,7 +60,7 @@ func (UploadPeer) PunchHole(config Config) (uid string, localPort string, err er
 }
 
 func (p *UploadPeer) Connect(port string, cert tls.Certificate) error {
-    listener, err := net.Listen("tcp", net.JoinHostPort("0.0.0.0", port))
+    listener, err := net.Listen("tcp", net.JoinHostPort("", port))
 
     if err != nil {
         return err
@@ -75,6 +75,7 @@ func (p *UploadPeer) Connect(port string, cert tls.Certificate) error {
     p.conn = tls.Server(conn, &tls.Config{
         Certificates: []tls.Certificate{cert},
         MinVersion: tls.VersionTLS12,
+        MaxVersion: tls.VersionTLS12,
     })
 
     p.conn.Handshake()

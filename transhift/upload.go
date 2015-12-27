@@ -70,6 +70,7 @@ func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
                 // TODO: baaaaaad
                 InsecureSkipVerify: true,
                 MinVersion: tls.VersionTLS12,
+                MaxVersion: tls.VersionTLS12,
             })
         }
     }
