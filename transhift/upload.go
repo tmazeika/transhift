@@ -22,7 +22,7 @@ func (a UploadArgs) AbsFilePath() string {
 }
 
 type DownloadPeer struct {
-    conn     net.Conn
+    conn     *tls.Conn
     reader   *bufio.Reader
     writer   *bufio.Writer
 }
@@ -56,14 +56,15 @@ func (p *DownloadPeer) Connect(remoteAddr string, storage *Storage) error {
     }
 
     for p.conn == nil {
-        p.conn, _ = tls.Dial("tcp", remoteAddr, &tls.Config{
-            Certificates: []tls.Certificate{cert},
-            InsecureSkipVerify: true,
-        })
-    }
+        conn, err := net.Dial("tcp", remoteAddr)
 
-    p.conn.Write([]byte{0})
-    p.conn.Read(make([]byte, 1))
+        if err == nil {
+            p.conn = tls.Client(conn, &tls.Config{
+                Certificates: []tls.Certificate{cert},
+                InsecureSkipVerify: true,
+            })
+        }
+    }
 
     p.reader = bufio.NewReader(p.conn)
     p.writer = bufio.NewWriter(p.conn)

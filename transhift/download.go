@@ -23,7 +23,7 @@ func (a DownloadArgs) DestinationOrDef(def string) string {
 }
 
 type UploadPeer struct {
-    conn     net.Conn
+    conn     *tls.Conn
     reader   *bufio.Reader
     writer   *bufio.Writer
     metaInfo *ProtoMetaInfo
@@ -58,20 +58,21 @@ func (p *UploadPeer) Connect(port string, storage *Storage) error {
         return err
     }
 
-    listener, err := tls.Listen("tcp", net.JoinHostPort("", port), &tls.Config{Certificates: []tls.Certificate{cert}})
+    listener, err := net.Listen("tcp", net.JoinHostPort("", port))
 
     if err != nil {
         return err
     }
 
-    p.conn, err = listener.Accept()
+    conn, err := listener.Accept()
 
     if err != nil {
         return err
     }
 
-    p.conn.Write([]byte{0})
-    p.conn.Read(make([]byte, 1))
+    p.conn = tls.Server(conn, &tls.Config{Certificates: []tls.Certificate{cert}})
+
+    p.conn.ConnectionState().PeerCertificates[0].Subject.ToRDNSequence()
 
     p.reader = bufio.NewReader(p.conn)
     p.writer = bufio.NewWriter(p.conn)
