@@ -24,7 +24,7 @@ func (u UploadArgs) AbsFilePath() string {
 }
 
 type DownloadPeer struct {
-    conn  net.Conn
+    conn  *tls.Conn
     inOut *bufio.ReadWriter
 }
 
