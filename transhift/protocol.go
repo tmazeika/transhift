@@ -102,9 +102,7 @@ func (m *ProtoMetaInfo) Serialize() []byte {
     buffer.WriteString(m.fileName)
     buffer.WriteRune('\n')
     // fileSize
-    fileSizeBuffer := make([]byte, 8)
-    binary.BigEndian.PutUint64(fileSizeBuffer, m.fileSize)
-    buffer.Write(fileSizeBuffer)
+    buffer.Write(uint64ToBytes(m.fileSize))
     buffer.WriteRune('\n')
     // fileChecksum
     buffer.Write(m.fileChecksum)
@@ -121,7 +119,7 @@ func (m *ProtoMetaInfo) Deserialize(b []byte) {
     m.fileName = scanner.Text()
     // fileSize
     scanner.Scan()
-    m.fileSize = binary.BigEndian.Uint64(scanner.Bytes())
+    m.fileSize = bytesToUint64(scanner.Bytes())
     // fileChecksum
     scanner.Scan()
     m.fileChecksum = scanner.Bytes()
@@ -138,16 +136,24 @@ func uint64Min(x, y uint64) uint64 {
     return y
 }
 
+func uint64ToBytes(i uint64) (b []byte) {
+    b = make([]byte, 8)
+    binary.BigEndian.PutUint64(b, i)
+    return
+}
+
+func bytesToUint64(b []byte) uint64 {
+    return binary.BigEndian.Uint64(b)
+}
+
 func boolToByte(b bool) byte {
     if b {
         return 0x01
     }
+
     return 0x00
 }
 
 func byteToBool(b byte) bool {
-    if b == 0x00 {
-        return false
-    }
-    return true
+    return b != 0x00
 }
