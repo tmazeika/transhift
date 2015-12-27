@@ -51,13 +51,13 @@ func parseCertificate(keyData, certData []byte) (key *rsa.PrivateKey, cert *x509
     key, err = x509.ParsePKCS1PrivateKey(keyData)
 
     if err != nil {
-        return nil, nil, err
+        return nil, nil, nil, err
     }
 
     cert, err = x509.ParseCertificate(certData)
 
     if err != nil {
-        return nil, nil, err
+        return nil, nil, nil, err
     }
 
     certPool = x509.NewCertPool()
@@ -69,7 +69,7 @@ func parseCertificate(keyData, certData []byte) (key *rsa.PrivateKey, cert *x509
 
 func createTLSConfig(key *rsa.PrivateKey, certPool *x509.CertPool) *tls.Config {
     return &tls.Config{
-        Certificates: []tls.Certificate{&tls.Certificate{
+        Certificates: []tls.Certificate{tls.Certificate{
             Certificate: certPool.Subjects(),
             PrivateKey: key,
         }},

@@ -133,7 +133,11 @@ func Download(c *cli.Context) {
         os.Exit(1)
     }
 
-    err = storage.Crypto()
+    key, cert, certPool, err := storage.Crypto()
+
+    fmt.Println(key.PublicKey)
+    fmt.Println(cert.PublicKey)
+    fmt.Println(certPool.Subjects())
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
