@@ -62,7 +62,6 @@ func (p *UploadPeer) Connect(port string, cert tls.Certificate) error {
     tlsConfig := &tls.Config{
         Certificates: []tls.Certificate{cert},
         MinVersion: tls.VersionTLS12,
-        MaxVersion: tls.VersionTLS12,
     }
     listener, err := tls.Listen("tcp", net.JoinHostPort("", port), tlsConfig)
 

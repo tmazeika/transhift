@@ -64,10 +64,7 @@ func (DownloadPeer) PunchHole(peerUid string, config *Config) (remoteAddr string
 func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
     tlsConfig := &tls.Config{
         Certificates: []tls.Certificate{cert},
-        // TODO: baaaaaad
-        InsecureSkipVerify: true,
         MinVersion: tls.VersionTLS12,
-        MaxVersion: tls.VersionTLS12,
     }
 
     for p.conn == nil {
