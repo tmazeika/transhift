@@ -38,7 +38,6 @@ func (p *DownloadPeer) PunchHole(args UploadArgs, config *Config) (remoteAddr st
     conn.Write([]byte{byte(ProtoMsgClientTypeUL)})
     conn.Write([]byte(args.peer))
     line, err := bufio.NewReader(conn).ReadBytes('\n')
-
     line = line[:len(line) - 1] // trim trailing \n
 
     if err != nil {
@@ -98,7 +97,7 @@ func Upload(c *cli.Context) {
     args := UploadArgs{
         peer:     c.Args()[0],
         filePath: c.Args()[1],
-        appDir:   c.String("app-dir"),
+        appDir:   c.GlobalString("app-dir"),
     }
 
     if len(args.peer) != ProtoPeerUIDLen {

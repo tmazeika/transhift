@@ -70,9 +70,9 @@ func (p *UploadPeer) Connect(port string, storage *Storage) error {
         return err
     }
 
-    p.conn = tls.Server(conn, &tls.Config{Certificates: []tls.Certificate{cert}})
-
-    p.conn.ConnectionState().PeerCertificates[0].Subject.ToRDNSequence()
+    p.conn = tls.Server(conn, &tls.Config{
+        Certificates: []tls.Certificate{cert},
+    })
 
     p.reader = bufio.NewReader(p.conn)
     p.writer = bufio.NewWriter(p.conn)
