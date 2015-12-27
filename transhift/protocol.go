@@ -7,81 +7,34 @@ import (
     "bufio"
 )
 
-// application information
 const (
-    AppVersion = "0.2.0"
+    // Version is the current version of the application.
+    Version = "0.2.0"
 )
 
-// compatibility information
 var (
-    appCompatibility = map[string][]string{
+    // compatibility is a map of versions to an array of compatible, older
+    // versions.
+    compatibility = map[string][]string{
         "0.1.0": []string{"0.1.0"},
         "0.2.0": []string{"0.2.0"},
     }
 )
 
-// puncher information
 const (
-    ProtoPeerUIDLen    = 16
+    // ChunkSize is the number of bytes that are read from the file each
+    // iteration of the upload loop.
+    ChunkSize = 4096
 )
 
-// protocol information
+type ProtocolMessage byte
+
 const (
-    ProtoChunkSize = 4096
+    DownloadClientType ProtocolMessage = 0x00
+    UploadClientType   ProtocolMessage = 0x01
+    ChecksumMismatch   ProtocolMessage = 0x02
+    ChecksumMatch      ProtocolMessage = 0x03
 )
-
-type ProtoMsg byte
-
-// protocol messages
-const (
-    ProtoMsgClientTypeDL     ProtoMsg = 0x00
-    ProtoMsgClientTypeUL     ProtoMsg = 0x01
-    ProtoMsgChecksumMismatch ProtoMsg = 0x02
-    ProtoMsgChecksumMatch    ProtoMsg = 0x03
-)
-
-func checkCompatibility(in *bufio.Reader, out *bufio.Writer) error {
-    compare := func(v1, v2 string) bool {
-        if appCompatibility[v1] != nil {
-            for _, v := range appCompatibility[v1] {
-                if v == v2 {
-                    return true
-                }
-            }
-        }
-
-        return false
-    }
-
-    out.WriteString(AppVersion)
-    out.WriteRune('\n')
-    out.Flush()
-
-    line, err := in.ReadBytes('\n')
-    line = line[:len(line) - 1] // trim trailing \n
-
-    if err != nil {
-        return err
-    }
-
-    remoteVersion := string(line)
-    localCompatibility := compare(AppVersion, remoteVersion)
-    out.WriteByte(boolToByte(localCompatibility))
-    out.Flush()
-
-    lineBuffer := make([]byte, 1)
-    _, err = in.Read(lineBuffer)
-
-    if err != nil {
-        return err
-    }
-
-    if ! localCompatibility && ! byteToBool(lineBuffer[0]) {
-        return fmt.Errorf("incompatible versions %s and %s", AppVersion, remoteVersion)
-    }
-
-    return nil
-}
 
 type Serializable interface {
     Serialize() []byte
@@ -89,44 +42,76 @@ type Serializable interface {
     Deserialize([]byte)
 }
 
-type ProtoMetaInfo struct {
-    fileName      string
-    fileSize      uint64
-    fileChecksum  []byte
+func CheckCompatibility(inOut bufio.ReadWriter) error {
+    scanner := bufio.NewScanner(inOut.Reader)
+
+    inOut.WriteString(Version)
+    inOut.WriteRune('\n')
+    inOut.Flush()
+    scanner.Scan()
+
+    remoteVersion := scanner.Text()
+    var localCompatible bool
+
+    for _, v := range compatibility[Version] {
+        if v == remoteVersion {
+            localCompatible = true
+            break
+        }
+    }
+
+    inOut.WriteByte(boolToByte(localCompatible))
+    inOut.Flush()
+    scanner.Split(bufio.ScanBytes)
+    scanner.Scan()
+
+    remoteCompatible := byteToBool(scanner.Bytes()[0])
+
+    if ! localCompatible && ! remoteCompatible {
+        return fmt.Errorf("incompatible versions %s and %s", Version, remoteVersion)
+    }
+
+    return nil
 }
 
-func (m *ProtoMetaInfo) Serialize() []byte {
+type FileInfo struct {
+    name     string
+    size     uint64
+    checksum []byte
+}
+
+func (m FileInfo) Serialize() []byte {
     var buffer bytes.Buffer
 
-    // fileName
-    buffer.WriteString(m.fileName)
+    // name
+    buffer.WriteString(m.name)
     buffer.WriteRune('\n')
-    // fileSize
-    buffer.Write(uint64ToBytes(m.fileSize))
+    // size
+    buffer.Write(uint64ToBytes(m.size))
     buffer.WriteRune('\n')
-    // fileChecksum
-    buffer.Write(m.fileChecksum)
+    // checksum
+    buffer.Write(m.checksum)
     buffer.WriteRune('\n')
 
     return buffer.Bytes()
 }
 
-func (m *ProtoMetaInfo) Deserialize(b []byte) {
+func (m *FileInfo) Deserialize(b []byte) {
     scanner := bufio.NewScanner(bytes.NewReader(b))
 
-    // fileName
+    // name
     scanner.Scan()
-    m.fileName = scanner.Text()
-    // fileSize
+    m.name = scanner.Text()
+    // size
     scanner.Scan()
-    m.fileSize = bytesToUint64(scanner.Bytes())
-    // fileChecksum
+    m.size = bytesToUint64(scanner.Bytes())
+    // checksum
     scanner.Scan()
-    m.fileChecksum = scanner.Bytes()
+    m.checksum = scanner.Bytes()
 }
 
-func (m *ProtoMetaInfo) String() string {
-    return fmt.Sprintf("name: '%s', size: %s", m.fileName, formatSize(m.fileSize))
+func (m *FileInfo) String() string {
+    return fmt.Sprintf("name: '%s', size: %s", m.name, formatSize(m.size))
 }
 
 func uint64Min(x, y uint64) uint64 {

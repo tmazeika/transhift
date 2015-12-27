@@ -26,7 +26,7 @@ type UploadPeer struct {
     conn     *tls.Conn
     reader   *bufio.Reader
     writer   *bufio.Writer
-    metaInfo *ProtoMetaInfo
+    metaInfo *FileInfo
 }
 
 func (p *UploadPeer) PunchHole(config *Config) (uid, localPort string, err error) {
@@ -37,7 +37,7 @@ func (p *UploadPeer) PunchHole(config *Config) (uid, localPort string, err error
     }
 
     defer conn.Close()
-    conn.Write([]byte{byte(ProtoMsgClientTypeDL)})
+    conn.Write([]byte{byte(DownloadClientType)})
     uidBuffer := make([]byte, ProtoPeerUIDLen)
     conn.Read(uidBuffer)
 
@@ -77,7 +77,7 @@ func (p *UploadPeer) Connect(port string, storage *Storage) error {
     p.reader = bufio.NewReader(p.conn)
     p.writer = bufio.NewWriter(p.conn)
 
-    err = checkCompatibility(p.reader, p.writer)
+    err = CheckCompatibility(p.reader, p.writer)
 
     if err != nil {
         return err
@@ -102,7 +102,7 @@ func (p *UploadPeer) ReceiveMetaInfo() {
         buffer.Write(line)
     }
 
-    p.metaInfo = &ProtoMetaInfo{}
+    p.metaInfo = &FileInfo{}
     p.metaInfo.Deserialize(buffer.Bytes())
 }
 
@@ -111,8 +111,8 @@ func (p *UploadPeer) ReceiveChunks() chan []byte {
     var bytesRead uint64
 
     go func() {
-        for bytesRead < p.metaInfo.fileSize {
-            adjustedChunkSize := uint64Min(p.metaInfo.fileSize - bytesRead, ProtoChunkSize)
+        for bytesRead < p.metaInfo.size {
+            adjustedChunkSize := uint64Min(p.metaInfo.size - bytesRead, ChunkSize)
             chunkBuffer := make([]byte, adjustedChunkSize)
             chunkBytesRead, _ := p.reader.Read(chunkBuffer)
             bytesRead += uint64(chunkBytesRead)
@@ -123,7 +123,7 @@ func (p *UploadPeer) ReceiveChunks() chan []byte {
     return ch
 }
 
-func (p *UploadPeer) SendMessage(message ProtoMsg) {
+func (p *UploadPeer) SendMessage(message ProtocolMessage) {
     p.conn.Write([]byte{byte(message)})
 }
 
@@ -173,7 +173,7 @@ func Download(c *cli.Context) {
     fmt.Print("Waiting for file info... ")
     peer.ReceiveMetaInfo()
     fmt.Println("Downloading... ")
-    file, err := os.Create(args.DestinationOrDef(peer.metaInfo.fileName))
+    file, err := os.Create(args.DestinationOrDef(peer.metaInfo.name))
     defer file.Close()
 
     if err != nil {
@@ -185,11 +185,11 @@ func Download(c *cli.Context) {
     var bytesRead uint64
     progressBar := ProgressBar{
         current: &bytesRead,
-        total:   peer.metaInfo.fileSize,
+        total:   peer.metaInfo.size,
     }
     progressBar.Start()
 
-    for bytesRead < peer.metaInfo.fileSize {
+    for bytesRead < peer.metaInfo.size {
         chunk := <- ch
         file.WriteAt(chunk, int64(bytesRead))
         bytesRead += uint64(len(chunk))
@@ -198,11 +198,11 @@ func Download(c *cli.Context) {
     progressBar.Stop(true)
     fmt.Print("Verifying file... ")
 
-    if bytes.Equal(calculateFileChecksum(file), peer.metaInfo.fileChecksum) {
-        peer.SendMessage(ProtoMsgChecksumMatch)
+    if bytes.Equal(calculateFileChecksum(file), peer.metaInfo.checksum) {
+        peer.SendMessage(ChecksumMatch)
         fmt.Println("done")
     } else {
-        peer.SendMessage(ProtoMsgChecksumMismatch)
+        peer.SendMessage(ChecksumMismatch)
         fmt.Fprintln(os.Stderr, "checksum mismatch")
         os.Exit(1)
     }

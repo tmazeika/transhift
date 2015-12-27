@@ -35,7 +35,7 @@ func (p *DownloadPeer) PunchHole(args UploadArgs, config *Config) (remoteAddr st
     }
 
     defer conn.Close()
-    conn.Write([]byte{byte(ProtoMsgClientTypeUL)})
+    conn.Write([]byte{byte(UploadClientType)})
     conn.Write([]byte(args.peer))
     line, err := bufio.NewReader(conn).ReadBytes('\n')
     line = line[:len(line) - 1] // trim trailing \n
@@ -68,10 +68,10 @@ func (p *DownloadPeer) Connect(remoteAddr string, storage *Storage) error {
     p.reader = bufio.NewReader(p.conn)
     p.writer = bufio.NewWriter(p.conn)
 
-    return checkCompatibility(p.reader, p.writer)
+    return CheckCompatibility(p.reader, p.writer)
 }
 
-func (p *DownloadPeer) SendMetaInfo(metaInfo *ProtoMetaInfo) {
+func (p *DownloadPeer) SendMetaInfo(metaInfo *FileInfo) {
     p.conn.Write(metaInfo.Serialize())
 }
 
@@ -79,14 +79,14 @@ func (p *DownloadPeer) SendChunk(chunk []byte) {
     p.conn.Write(chunk)
 }
 
-func (p *DownloadPeer) ReceiveMessages() chan ProtoMsg {
-    ch := make(chan ProtoMsg)
+func (p *DownloadPeer) ReceiveMessages() chan ProtocolMessage {
+    ch := make(chan ProtocolMessage)
 
     go func() {
         for {
             buffer := make([]byte, 1)
             p.conn.Read(buffer)
-            ch <- ProtoMsg(buffer[0])
+            ch <- ProtocolMessage(buffer[0])
         }
     }()
 
@@ -155,10 +155,10 @@ func Upload(c *cli.Context) {
         os.Exit(1)
     }
 
-    metaInfo := &ProtoMetaInfo{
-        fileName: filepath.Base(file.Name()),
-        fileSize: uint64(fileInfo.Size()),
-        fileChecksum: calculateFileChecksum(file),
+    metaInfo := &FileInfo{
+        name: filepath.Base(file.Name()),
+        size: uint64(fileInfo.Size()),
+        checksum: calculateFileChecksum(file),
     }
 
     peer.SendMetaInfo(metaInfo)
@@ -172,7 +172,7 @@ func Upload(c *cli.Context) {
     progressBar.Start()
 
     for bytesWritten < uint64(fileInfo.Size()) {
-        adjustedChunkSize := uint64Min(uint64(fileInfo.Size()) - bytesWritten, ProtoChunkSize)
+        adjustedChunkSize := uint64Min(uint64(fileInfo.Size()) - bytesWritten, ChunkSize)
         chunkBuffer := make([]byte, adjustedChunkSize)
         chunkBytesWritten, _ := file.ReadAt(chunkBuffer, int64(bytesWritten))
         bytesWritten += uint64(chunkBytesWritten)
@@ -183,9 +183,9 @@ func Upload(c *cli.Context) {
     fmt.Print("Verifying file... ")
 
     switch <- msgCh {
-    case ProtoMsgChecksumMatch:
+    case ChecksumMatch:
         fmt.Println("done")
-    case ProtoMsgChecksumMismatch:
+    case ChecksumMismatch:
         fmt.Fprintln(os.Stderr, "checksum mismatch")
         os.Exit(1)
     default:
