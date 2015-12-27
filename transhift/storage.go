@@ -50,7 +50,24 @@ func (s *Storage) ConfigFile() (*os.File, error) {
         return nil, err
     }
 
-    return getFile(filepath.Join(dir, FileName))
+    filePath := filepath.Join(dir, FileName)
+
+    if ! fileExists(filePath, false) {
+        defConfig := &Config{
+            PuncherHost: "127.0.0.1", // TODO: change
+            PuncherPort: 50977,
+        }
+
+        data, err := json.MarshalIndent(defConfig, "", "  ")
+
+        if err != nil {
+            return nil, err
+        }
+
+        err = ioutil.WriteFile(filePath, data, 0644)
+    }
+
+    return getFile(filePath)
 }
 
 func (s *Storage) Config() (*Config, error) {
@@ -84,9 +101,12 @@ func (s *Storage) PrivKey() (*rsa.PrivateKey, error) {
 
     privFilePath := filepath.Join(dir, PrivFileName)
     pubFilePath := filepath.Join(dir, PubFileName)
+    forceNewPubKeyWrite := false
 
     if ! fileExists(privFilePath, false) {
         fmt.Print("Generating keys... ")
+
+        forceNewPubKeyWrite = true
         var pemData []byte
         s.privKey, pemData, err = generatePrivateKey()
 
@@ -99,6 +119,7 @@ func (s *Storage) PrivKey() (*rsa.PrivateKey, error) {
         if err != nil {
             return nil, err
         }
+
         fmt.Println("done")
     } else {
         privFile, err := getFile(privFilePath)
@@ -121,7 +142,7 @@ func (s *Storage) PrivKey() (*rsa.PrivateKey, error) {
         }
     }
 
-    if ! fileExists(pubFilePath, false) {
+    if forceNewPubKeyWrite || ! fileExists(pubFilePath, false) {
         pemData, err := getPublicKeyPem(s.privKey)
 
         if err != nil {

@@ -15,7 +15,7 @@ func main() {
 
     app.Flags = []cli.Flag{
         cli.StringFlag{
-            Name: "app-dir, a",
+            Name: "app-dir",
             Value: "",
             Usage: "application directory",
         },

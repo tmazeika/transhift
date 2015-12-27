@@ -118,7 +118,7 @@ func (p *UploadPeer) SendMessage(message ProtoMsg) {
 
 func Download(c *cli.Context) {
     args := DownloadArgs{
-        appDir:      c.String("app-dir"),
+        appDir:      c.GlobalString("app-dir"),
         destination: c.String("destination"),
     }
 
@@ -133,14 +133,12 @@ func Download(c *cli.Context) {
         os.Exit(1)
     }
 
-    privKey, err := storage.PrivKey()
+    _, err = storage.PrivKey()
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
         os.Exit(1)
     }
-
-    fmt.Println("privKey", privKey)
 
     peer := &UploadPeer{}
     uid, localPort, err := peer.PunchHole(config)
