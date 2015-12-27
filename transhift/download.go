@@ -152,8 +152,6 @@ func Download(c *cli.Context) {
     peer := UploadPeer{}
     uid, localPort, err := peer.PunchHole(*config)
 
-    fmt.Println("DEBUG: localPort", localPort)
-
     if err != nil {
         fmt.Fprintln(os.Stderr, "Unable to retrieve UID")
         os.Exit(1)
@@ -165,7 +163,7 @@ func Download(c *cli.Context) {
     err = peer.Connect(localPort, cert)
 
     if err != nil {
-        fmt.Fprintln(os.Stderr, err)
+        fmt.Fprintf(os.Stderr, err)
         os.Exit(1)
     }
 

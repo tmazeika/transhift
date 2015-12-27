@@ -9,6 +9,7 @@ import (
     "os"
     "crypto/tls"
     "bytes"
+    "time"
 )
 
 type UploadArgs struct {
@@ -72,6 +73,8 @@ func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
                 MinVersion: tls.VersionTLS12,
                 MaxVersion: tls.VersionTLS12,
             })
+        } else {
+            time.Sleep(time.Second)
         }
     }
 
