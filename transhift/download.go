@@ -151,7 +151,7 @@ func Download(c *cli.Context) {
         os.Exit(1)
     }
 
-    fmt.Printf("UID: '%s'\n", uid)
+    fmt.Printf("Received UID: '%s'\n", uid)
     fmt.Print("Listening for peer... ")
 
     err = peer.Connect(localPort, cert)
