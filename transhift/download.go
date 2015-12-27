@@ -152,12 +152,13 @@ func Download(c *cli.Context) {
     fmt.Print("Listening for peer... ")
 
     err = peer.Connect(localPort)
-    defer peer.conn.Close()
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
         os.Exit(1)
     }
+
+    defer peer.conn.Close()
 
     fmt.Println("done")
     fmt.Print("Waiting for file info... ")
