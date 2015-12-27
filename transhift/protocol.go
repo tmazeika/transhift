@@ -165,3 +165,7 @@ func boolToByte(b bool) byte {
 func byteToBool(b byte) bool {
     return b != 0x00
 }
+
+func messageToBytes(msg ProtocolMessage) []byte {
+    return []byte{byte(msg)}
+}

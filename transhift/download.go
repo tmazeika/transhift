@@ -29,7 +29,8 @@ type UploadPeer struct {
     fileInfo *FileInfo
 }
 
-func (p *UploadPeer) PunchHole(config *Config) (uid, localPort string, err error) {
+func (UploadPeer) PunchHole(config Config) (uid string, localPort string, err error) {
+    const UidLength = 16
     conn, err := net.Dial("tcp", net.JoinHostPort(config.PuncherHost, config.PuncherPortStr()))
 
     if err != nil {
@@ -37,18 +38,24 @@ func (p *UploadPeer) PunchHole(config *Config) (uid, localPort string, err error
     }
 
     defer conn.Close()
-    conn.Write([]byte{byte(DownloadClientType)})
-    uidBuffer := make([]byte, ProtoPeerUIDLen)
-    conn.Read(uidBuffer)
 
-    localAddr := conn.LocalAddr().String()
-    _, port, err := net.SplitHostPort(localAddr)
+    if _, err := conn.Write(messageToBytes(DownloadClientType)); err != nil {
+        return "", "", err
+    }
+
+    uidBuffer := make([]byte, UidLength)
+
+    if _, err := conn.Read(uidBuffer); err != nil {
+        return "", "", err
+    }
+
+    _, localPort, err = net.SplitHostPort(conn.LocalAddr().String())
 
     if err != nil {
         return "", "", err
     }
 
-    return string(uidBuffer), port, nil
+    return string(uidBuffer), localPort, nil
 }
 
 func (p *UploadPeer) Connect(port string, cert tls.Certificate) error {
