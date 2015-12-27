@@ -10,18 +10,23 @@ import (
     "crypto/x509"
     "encoding/pem"
     "io/ioutil"
+    "fmt"
 )
+
+type Config struct {
+    PuncherHost string
+    PuncherPort uint16
+}
+
+func (c *Config) PuncherPortStr() string {
+    return fmt.Sprint(c.PuncherPort)
+}
 
 type Storage struct {
     customDir string
 
     config *Config
     privKey *rsa.PrivateKey
-}
-
-type Config struct {
-    PuncherHost string
-    PuncherPort uint16
 }
 
 func (s *Storage) Dir() (string, error) {
@@ -114,7 +119,8 @@ func (s *Storage) PrivKey() (*rsa.PrivateKey, error) {
             return nil, err
         }
 
-        s.privKey, err = x509.ParsePKCS1PrivateKey(bytes)
+        block, bytes := pem.Decode(bytes)
+        s.privKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 
         if err != nil {
             return nil, err
@@ -136,7 +142,7 @@ func (s *Storage) PrivKey() (*rsa.PrivateKey, error) {
         err = ioutil.WriteFile(pubFilePath, pubPemData, 0644)
 
         if err != nil {
-            return err
+            return nil, err
         }
     }
 

@@ -13,6 +13,14 @@ func main() {
     app.Usage = "Peer-to-peer file transfers"
     app.Version = "0.1.0"
 
+    app.Flags = []cli.Flag{
+        cli.StringFlag{
+            Name: "app-dir, a",
+            Value: "",
+            Usage: "application directory",
+        },
+    }
+
     app.Commands = []cli.Command{
         {
             Name: "download",
@@ -23,7 +31,7 @@ func main() {
                 cli.StringFlag{
                     Name: "destination, d",
                     Value: "",
-                    Usage: "destination directory",
+                    Usage: "destination file",
                 },
             },
         },

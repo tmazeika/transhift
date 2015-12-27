@@ -12,6 +12,7 @@ import (
 type UploadArgs struct {
     peer     string
     filePath string
+    appDir   string
 }
 
 func (a UploadArgs) AbsFilePath() string {
@@ -25,8 +26,8 @@ type DownloadPeer struct {
     writer   *bufio.Writer
 }
 
-func (p *DownloadPeer) PunchHole(args UploadArgs) (remoteAddr string, err error) {
-    conn, err := net.Dial("tcp", net.JoinHostPort(PuncherHost, PuncherPortStr))
+func (p *DownloadPeer) PunchHole(args UploadArgs, config *Config) (remoteAddr string, err error) {
+    conn, err := net.Dial("tcp", net.JoinHostPort(config.PuncherHost, config.PuncherPortStr()))
 
     if err != nil {
         return "", err
@@ -89,6 +90,7 @@ func Upload(c *cli.Context) {
     args := UploadArgs{
         peer:     c.Args()[0],
         filePath: c.Args()[1],
+        appDir:   c.String("app-dir"),
     }
 
     if len(args.peer) != ProtoPeerUIDLen {
@@ -96,9 +98,20 @@ func Upload(c *cli.Context) {
         os.Exit(1)
     }
 
+    storage := &Storage{
+        customDir: args.appDir,
+    }
+
+    config, err := storage.Config()
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+
     peer := &DownloadPeer{}
     fmt.Print("Waiting for peer... ")
-    remoteAddr, err := peer.PunchHole(args)
+    remoteAddr, err := peer.PunchHole(args, config)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)

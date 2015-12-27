@@ -22,9 +22,6 @@ var (
 
 // puncher information
 const (
-    PuncherHost        = "127.0.0.1" // TODO: change
-    PuncherPort uint16 =  50977
-    PuncherPortStr     = "50977"
     ProtoPeerUIDLen    = 16
 )
 

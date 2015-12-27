@@ -10,6 +10,7 @@ import (
 )
 
 type DownloadArgs struct {
+    appDir      string
     destination string
 }
 
@@ -27,15 +28,15 @@ type UploadPeer struct {
     metaInfo *ProtoMetaInfo
 }
 
-func (p *UploadPeer) PunchHole() (uid, localPort string, err error) {
-    conn, err := net.Dial("tcp", net.JoinHostPort(PuncherHost, PuncherPortStr))
+func (p *UploadPeer) PunchHole(config *Config) (uid, localPort string, err error) {
+    conn, err := net.Dial("tcp", net.JoinHostPort(config.PuncherHost, config.PuncherPortStr()))
 
     if err != nil {
         return "", "", err
     }
 
     defer conn.Close()
-    p.SendMessage(ProtoMsgClientTypeDL)
+    conn.Write([]byte{byte(ProtoMsgClientTypeDL)})
     uidBuffer := make([]byte, ProtoPeerUIDLen)
     conn.Read(uidBuffer)
 
@@ -117,11 +118,32 @@ func (p *UploadPeer) SendMessage(message ProtoMsg) {
 
 func Download(c *cli.Context) {
     args := DownloadArgs{
+        appDir:      c.String("app-dir"),
         destination: c.String("destination"),
     }
 
+    storage := &Storage{
+        customDir: args.appDir,
+    }
+
+    config, err := storage.Config()
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+
+    privKey, err := storage.PrivKey()
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+
+    fmt.Println("privKey", privKey)
+
     peer := &UploadPeer{}
-    uid, localPort, err := peer.PunchHole()
+    uid, localPort, err := peer.PunchHole(config)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, "Unable to retrieve UID")
