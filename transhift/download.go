@@ -8,7 +8,6 @@ import (
     "fmt"
     "os"
     "crypto/tls"
-//    "time"
 )
 
 type DownloadArgs struct {
@@ -25,7 +24,7 @@ func (a DownloadArgs) DestinationOrDef(def string) string {
 }
 
 type UploadPeer struct {
-    conn     *tls.Conn
+    conn     net.Conn
     inOut    *bufio.ReadWriter
     fileInfo FileInfo
 }
@@ -60,27 +59,24 @@ func (UploadPeer) PunchHole(config Config) (uid string, localPort string, err er
 }
 
 func (p *UploadPeer) Connect(port string, cert tls.Certificate) error {
-    listener, err := net.Listen("tcp", net.JoinHostPort("", port))
-
-    if err != nil {
-        return err
-    }
-
-    conn, err := listener.Accept()
-
-    if err != nil {
-        return err
-    }
-
-    p.conn = tls.Server(conn, &tls.Config{
+    tlsConfig := &tls.Config{
         Certificates: []tls.Certificate{cert},
         MinVersion: tls.VersionTLS12,
         MaxVersion: tls.VersionTLS12,
-    })
+    }
+    listener, err := tls.Listen("tcp", net.JoinHostPort("", port), tlsConfig)
 
-    p.conn.Handshake()
+    if err != nil {
+        return err
+    }
 
-    p.inOut = bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+    p.conn, err = listener.Accept()
+
+    if err != nil {
+        return err
+    }
+
+    p.inOut = bufio.NewReadWriter(bufio.NewReader(p.conn), bufio.NewWriter(p.conn))
 
     return CheckCompatibility(p.inOut)
 }
@@ -163,7 +159,7 @@ func Download(c *cli.Context) {
     err = peer.Connect(localPort, cert)
 
     if err != nil {
-        fmt.Fprintf(os.Stderr, err)
+        fmt.Fprintln(os.Stderr, err)
         os.Exit(1)
     }
 
