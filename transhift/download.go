@@ -31,6 +31,7 @@ type UploadPeer struct {
 
 func (UploadPeer) PunchHole(config Config) (uid string, localPort string, err error) {
     const UidLength = 16
+    // TODO: use tls.Dial
     conn, err := net.Dial("tcp", net.JoinHostPort(config.PuncherHost, config.PuncherPortStr()))
 
     if err != nil {
