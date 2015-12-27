@@ -38,8 +38,17 @@ func (DownloadPeer) PunchHole(peerUid string, config *Config) (remoteAddr string
 
     var buffer bytes.Buffer
 
-    buffer.Write(messageToBytes(UploadClientType))
-    buffer.WriteString(peerUid)
+    if _, err := buffer.Write(messageToBytes(UploadClientType)); err != nil {
+        return "", err
+    }
+
+    if _, err := buffer.WriteString(peerUid); err != nil {
+        return "", err
+    }
+
+    if _, err := conn.Write(buffer.Bytes()); err != nil {
+        return "", err
+    }
 
     scanner := bufio.NewScanner(bufio.NewReader(conn))
 
