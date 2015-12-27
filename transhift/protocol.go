@@ -133,7 +133,7 @@ func (m *FileInfo) UnmarshalBinary(data []byte) error {
     return nil
 }
 
-func (m *FileInfo) String() string {
+func (m FileInfo) String() string {
     return fmt.Sprintf("name: '%s', size: %s", m.name, formatSize(m.size))
 }
 

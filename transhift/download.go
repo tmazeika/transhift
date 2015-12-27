@@ -16,17 +16,17 @@ type DownloadArgs struct {
 }
 
 func (a DownloadArgs) DestinationOrDef(def string) string {
-    if a.destination == "" {
+    if len(a.destination) == 0 {
         return def
     }
+
     return a.destination
 }
 
 type UploadPeer struct {
-    conn     *tls.Conn
-    reader   *bufio.Reader
-    writer   *bufio.Writer
-    metaInfo *FileInfo
+    conn     tls.Conn
+    inOut    bufio.ReadWriter
+    fileInfo *FileInfo
 }
 
 func (p *UploadPeer) PunchHole(config *Config) (uid, localPort string, err error) {
@@ -51,13 +51,7 @@ func (p *UploadPeer) PunchHole(config *Config) (uid, localPort string, err error
     return string(uidBuffer), port, nil
 }
 
-func (p *UploadPeer) Connect(port string, storage *Storage) error {
-    cert, err := storage.Crypto()
-
-    if err != nil {
-        return err
-    }
-
+func (p *UploadPeer) Connect(port string, cert tls.Certificate) error {
     listener, err := net.Listen("tcp", net.JoinHostPort("", port))
 
     if err != nil {
@@ -70,25 +64,16 @@ func (p *UploadPeer) Connect(port string, storage *Storage) error {
         return err
     }
 
-    p.conn = tls.Server(conn, &tls.Config{
+    p.conn = *tls.Server(conn, &tls.Config{
         Certificates: []tls.Certificate{cert},
     })
+    p.inOut = *bufio.NewReadWriter(&bufio.NewReader(p.conn), &bufio.NewWriter(p.conn))
 
-    p.reader = bufio.NewReader(p.conn)
-    p.writer = bufio.NewWriter(p.conn)
-
-    err = CheckCompatibility(p.reader, p.writer)
-
-    if err != nil {
-        return err
-    }
-
-    return nil
+    return CheckCompatibility(p.inOut)
 }
 
-func (p *UploadPeer) ReceiveMetaInfo() {
+func (p *UploadPeer) ReceiveFileInfo() {
     const ExpectedNLCount = 3
-
     var buffer bytes.Buffer
 
     for i := 0; i < ExpectedNLCount; i++ {
@@ -102,8 +87,8 @@ func (p *UploadPeer) ReceiveMetaInfo() {
         buffer.Write(line)
     }
 
-    p.metaInfo = &FileInfo{}
-    p.metaInfo.Deserialize(buffer.Bytes())
+    p.fileInfo = &FileInfo{}
+    p.fileInfo.Deserialize(buffer.Bytes())
 }
 
 func (p *UploadPeer) ReceiveChunks() chan []byte {
@@ -111,8 +96,8 @@ func (p *UploadPeer) ReceiveChunks() chan []byte {
     var bytesRead uint64
 
     go func() {
-        for bytesRead < p.metaInfo.size {
-            adjustedChunkSize := uint64Min(p.metaInfo.size - bytesRead, ChunkSize)
+        for bytesRead < p.fileInfo.size {
+            adjustedChunkSize := uint64Min(p.fileInfo.size - bytesRead, ChunkSize)
             chunkBuffer := make([]byte, adjustedChunkSize)
             chunkBytesRead, _ := p.reader.Read(chunkBuffer)
             bytesRead += uint64(chunkBytesRead)
@@ -171,9 +156,9 @@ func Download(c *cli.Context) {
 
     fmt.Println("done")
     fmt.Print("Waiting for file info... ")
-    peer.ReceiveMetaInfo()
+    peer.ReceiveFileInfo()
     fmt.Println("Downloading... ")
-    file, err := os.Create(args.DestinationOrDef(peer.metaInfo.name))
+    file, err := os.Create(args.DestinationOrDef(peer.fileInfo.name))
     defer file.Close()
 
     if err != nil {
@@ -185,11 +170,11 @@ func Download(c *cli.Context) {
     var bytesRead uint64
     progressBar := ProgressBar{
         current: &bytesRead,
-        total:   peer.metaInfo.size,
+        total:   peer.fileInfo.size,
     }
     progressBar.Start()
 
-    for bytesRead < peer.metaInfo.size {
+    for bytesRead < peer.fileInfo.size {
         chunk := <- ch
         file.WriteAt(chunk, int64(bytesRead))
         bytesRead += uint64(len(chunk))
@@ -198,7 +183,7 @@ func Download(c *cli.Context) {
     progressBar.Stop(true)
     fmt.Print("Verifying file... ")
 
-    if bytes.Equal(calculateFileChecksum(file), peer.metaInfo.checksum) {
+    if bytes.Equal(calculateFileChecksum(file), peer.fileInfo.checksum) {
         peer.SendMessage(ChecksumMatch)
         fmt.Println("done")
     } else {
