@@ -28,6 +28,7 @@ type DownloadPeer struct {
 }
 
 func (DownloadPeer) PunchHole(peerUid string, config *Config) (remoteAddr string, err error) {
+    // TODO: use tls.Dial
     conn, err := net.Dial("tcp", net.JoinHostPort(config.PuncherHost, config.PuncherPortStr()))
 
     if err != nil {
@@ -108,7 +109,7 @@ func (p DownloadPeer) ReceiveMessages() (ch chan ProtocolMessage) {
 
 func Upload(c *cli.Context) {
     args := UploadArgs{
-        peerUid:     c.Args()[0],
+        peerUid:  c.Args()[0],
         filePath: c.Args()[1],
         appDir:   c.GlobalString("app-dir"),
     }
