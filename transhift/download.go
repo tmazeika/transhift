@@ -7,6 +7,7 @@ import (
     "bytes"
     "fmt"
     "os"
+    "crypto/tls"
 )
 
 type DownloadArgs struct {
@@ -50,8 +51,15 @@ func (p *UploadPeer) PunchHole(config *Config) (uid, localPort string, err error
     return string(uidBuffer), port, nil
 }
 
-func (p *UploadPeer) Connect(port string) error {
-    listener, err := net.Listen("tcp", net.JoinHostPort("", port))
+func (p *UploadPeer) Connect(port string, storage *Storage) error {
+//    listener, err := net.Listen("tcp", net.JoinHostPort("", port))
+    key, _, certPool, err := storage.Crypto()
+
+    if err != nil {
+        return err
+    }
+
+    listener, err := tls.Listen("tcp", net.JoinHostPort("", port), createTLSConfig(key, certPool))
 
     if err != nil {
         return err
@@ -133,12 +141,6 @@ func Download(c *cli.Context) {
         os.Exit(1)
     }
 
-    key, cert, certPool, err := storage.Crypto()
-
-    fmt.Println(key.PublicKey)
-    fmt.Println(cert.PublicKey)
-    fmt.Println(certPool.Subjects())
-
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
         os.Exit(1)
@@ -155,7 +157,7 @@ func Download(c *cli.Context) {
     fmt.Printf("UID: '%s'\n", uid)
     fmt.Print("Listening for peer... ")
 
-    err = peer.Connect(localPort)
+    err = peer.Connect(localPort, storage)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)

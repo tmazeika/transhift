@@ -7,6 +7,7 @@ import (
     "bufio"
     "fmt"
     "os"
+    "crypto/tls"
 )
 
 type UploadArgs struct {
@@ -47,21 +48,21 @@ func (p *DownloadPeer) PunchHole(args UploadArgs, config *Config) (remoteAddr st
     return string(line), nil
 }
 
-func (p *DownloadPeer) Connect(remoteAddr string) error {
-    for p.conn == nil {
-        p.conn, _ = net.Dial("tcp", remoteAddr)
-    }
-
-    p.reader = bufio.NewReader(p.conn)
-    p.writer = bufio.NewWriter(p.conn)
-
-    err := checkCompatibility(p.reader, p.writer)
+func (p *DownloadPeer) Connect(remoteAddr string, storage *Storage) error {
+    key, _, certPool, err := storage.Crypto()
 
     if err != nil {
         return err
     }
 
-    return nil
+    for p.conn == nil {
+        p.conn, _ = tls.Dial("tcp", remoteAddr, createTLSConfig(key, certPool))
+    }
+
+    p.reader = bufio.NewReader(p.conn)
+    p.writer = bufio.NewWriter(p.conn)
+
+    return checkCompatibility(p.reader, p.writer)
 }
 
 func (p *DownloadPeer) SendMetaInfo(metaInfo *ProtoMetaInfo) {
@@ -120,7 +121,7 @@ func Upload(c *cli.Context) {
 
     fmt.Println("done")
     fmt.Printf("Connecting to '%s'... ", args.peer)
-    err = peer.Connect(remoteAddr)
+    err = peer.Connect(remoteAddr, storage)
     defer peer.conn.Close()
 
     if err != nil {

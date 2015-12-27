@@ -32,7 +32,7 @@ type Storage struct {
 func (s *Storage) Dir() (string, error) {
     const DefDirName = ".transhift"
 
-    if s.customDir == "" {
+    if len(s.customDir) == 0 {
         user, err := user.Current()
 
         if err != nil {
@@ -98,7 +98,7 @@ func (s *Storage) Config() (*Config, error) {
 
 func (s *Storage) Crypto() (*rsa.PrivateKey, *x509.Certificate, *x509.CertPool, error) {
     const KeyFileName = "key"
-    const CertFileName = "certificate"
+    const CertFileName = "cert"
     dir, err := s.Dir()
 
     if err != nil {
