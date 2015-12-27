@@ -86,6 +86,7 @@ func (s *Storage) PrivKey() (*rsa.PrivateKey, error) {
     pubFilePath := filepath.Join(dir, PubFileName)
 
     if ! fileExists(privFilePath, false) {
+        fmt.Print("Generating keys... ")
         var pemData []byte
         s.privKey, pemData, err = generatePrivateKey()
 
@@ -98,6 +99,7 @@ func (s *Storage) PrivKey() (*rsa.PrivateKey, error) {
         if err != nil {
             return nil, err
         }
+        fmt.Println("done")
     } else {
         privFile, err := getFile(privFilePath)
 
