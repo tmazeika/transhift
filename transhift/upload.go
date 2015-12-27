@@ -49,15 +49,21 @@ func (p *DownloadPeer) PunchHole(args UploadArgs, config *Config) (remoteAddr st
 }
 
 func (p *DownloadPeer) Connect(remoteAddr string, storage *Storage) error {
-    key, _, certPool, err := storage.Crypto()
+    cert, err := storage.Crypto()
 
     if err != nil {
         return err
     }
 
     for p.conn == nil {
-        p.conn, _ = tls.Dial("tcp", remoteAddr, createTLSConfig(key, certPool))
+        p.conn, _ = tls.Dial("tcp", remoteAddr, &tls.Config{
+            Certificates: []tls.Certificate{cert},
+            InsecureSkipVerify: true,
+        })
     }
+
+    p.conn.Write([]byte{0})
+    p.conn.Read(make([]byte, 1))
 
     p.reader = bufio.NewReader(p.conn)
     p.writer = bufio.NewWriter(p.conn)
@@ -122,12 +128,13 @@ func Upload(c *cli.Context) {
     fmt.Println("done")
     fmt.Printf("Connecting to '%s'... ", args.peer)
     err = peer.Connect(remoteAddr, storage)
-    defer peer.conn.Close()
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
         os.Exit(1)
     }
+
+    defer peer.conn.Close()
 
     fmt.Println("done")
     fmt.Print("Sending file info... ")

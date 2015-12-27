@@ -5,10 +5,10 @@ import (
     "path/filepath"
     "os"
     "encoding/json"
-    "crypto/rsa"
     "io/ioutil"
     "fmt"
     "crypto/x509"
+    "crypto/tls"
 )
 
 type Config struct {
@@ -24,9 +24,7 @@ type Storage struct {
     customDir string
 
     config    *Config
-    key       *rsa.PrivateKey
-    cert      *x509.Certificate
-    certPool  *x509.CertPool
+    cert      x509.Certificate
 }
 
 func (s *Storage) Dir() (string, error) {
@@ -78,6 +76,10 @@ func (s *Storage) ConfigFile() (*os.File, error) {
 }
 
 func (s *Storage) Config() (*Config, error) {
+    if s.config != nil {
+        return s.config, nil
+    }
+
     file, err := s.ConfigFile()
 
     if err != nil {
@@ -96,76 +98,43 @@ func (s *Storage) Config() (*Config, error) {
     return config, nil
 }
 
-func (s *Storage) Crypto() (*rsa.PrivateKey, *x509.Certificate, *x509.CertPool, error) {
-    const KeyFileName = "key"
-    const CertFileName = "cert"
+func (s *Storage) Crypto() (tls.Certificate, error) {
+    const CertFileName = "cert.pem"
+    const KeyFileName = "cert.key"
     dir, err := s.Dir()
 
     if err != nil {
-        return nil, nil, nil, err
+        return tls.Certificate{}, err
     }
 
-    keyFilePath := filepath.Join(dir, KeyFileName)
     certFilePath := filepath.Join(dir, CertFileName)
+    keyFilePath := filepath.Join(dir, KeyFileName)
 
-    if ! fileExists(keyFilePath, false) || ! fileExists(certFilePath, false) {
+    if ! fileExists(certFilePath, false) || ! fileExists(keyFilePath, false) {
         fmt.Print("Generating crypto... ")
 
-        var keyData, certData []byte
-        s.key, keyData, certData, err = createCertificate()
+        keyData, certData, err := createCertificate()
 
         if err != nil {
-            return nil, nil, nil, err
-        }
-
-        err = ioutil.WriteFile(keyFilePath, keyData, 0600)
-
-        if err != nil {
-            return nil, nil, nil, err
+            return tls.Certificate{}, err
         }
 
         err = ioutil.WriteFile(certFilePath, certData, 0600)
 
         if err != nil {
-            return nil, nil, nil, err
+            return tls.Certificate{}, err
+        }
+
+        err = ioutil.WriteFile(keyFilePath, keyData, 0600)
+
+        if err != nil {
+            return tls.Certificate{}, err
         }
 
         fmt.Println("done")
     }
 
-    keyFile, err := getFile(keyFilePath)
-
-    if err != nil {
-        return nil, nil, nil, err
-    }
-
-    defer keyFile.Close()
-    certFile, err := getFile(certFilePath)
-
-    if err != nil {
-        return nil, nil, nil, err
-    }
-
-    defer certFile.Close()
-    keyData, err := ioutil.ReadAll(keyFile)
-
-    if err != nil {
-        return nil, nil, nil, err
-    }
-
-    certData, err := ioutil.ReadAll(certFile)
-
-    if err != nil {
-        return nil, nil, nil, err
-    }
-
-    s.key, s.cert, s.certPool, err = parseCertificate(keyData, certData)
-
-    if err != nil {
-        return nil, nil, nil, err
-    }
-
-    return s.key, s.cert, s.certPool, nil
+    return tls.LoadX509KeyPair(certFilePath, keyFilePath)
 }
 
 func getFile(path string) (*os.File, error) {

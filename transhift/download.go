@@ -52,14 +52,13 @@ func (p *UploadPeer) PunchHole(config *Config) (uid, localPort string, err error
 }
 
 func (p *UploadPeer) Connect(port string, storage *Storage) error {
-//    listener, err := net.Listen("tcp", net.JoinHostPort("", port))
-    key, _, certPool, err := storage.Crypto()
+    cert, err := storage.Crypto()
 
     if err != nil {
         return err
     }
 
-    listener, err := tls.Listen("tcp", net.JoinHostPort("", port), createTLSConfig(key, certPool))
+    listener, err := tls.Listen("tcp", net.JoinHostPort("", port), &tls.Config{Certificates: []tls.Certificate{cert}})
 
     if err != nil {
         return err
@@ -70,6 +69,9 @@ func (p *UploadPeer) Connect(port string, storage *Storage) error {
     if err != nil {
         return err
     }
+
+    p.conn.Write([]byte{0})
+    p.conn.Read(make([]byte, 1))
 
     p.reader = bufio.NewReader(p.conn)
     p.writer = bufio.NewWriter(p.conn)

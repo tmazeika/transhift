@@ -9,7 +9,7 @@ import (
     "crypto/x509"
     "time"
     "math/big"
-    "crypto/tls"
+    "encoding/pem"
 )
 
 func calculateFileChecksum(file *os.File) []byte {
@@ -18,12 +18,12 @@ func calculateFileChecksum(file *os.File) []byte {
     return hash.Sum(nil)
 }
 
-func createCertificate() (key *rsa.PrivateKey, keyData []byte, certData []byte, err error) {
+func createCertificate() (keyData []byte, certData []byte, err error) {
     const RSABits = 4096
-    key, err = rsa.GenerateKey(rand.Reader, RSABits)
+    key, err := rsa.GenerateKey(rand.Reader, RSABits)
 
     if err != nil {
-        return nil, nil, nil, err
+        return nil, nil, err
     }
 
     keyData = x509.MarshalPKCS1PrivateKey(key)
@@ -32,7 +32,7 @@ func createCertificate() (key *rsa.PrivateKey, keyData []byte, certData []byte, 
         SignatureAlgorithm:    x509.SHA512WithRSA,
         PublicKeyAlgorithm:    x509.RSA,
         NotBefore:             time.Now(),
-        NotAfter:              time.Now().AddDate(1, 0, 0),
+        NotAfter:              time.Now().AddDate(1000, 0, 0),
         BasicConstraintsValid: true,
         IsCA:                  true,
         ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
@@ -41,38 +41,18 @@ func createCertificate() (key *rsa.PrivateKey, keyData []byte, certData []byte, 
     certData, err = x509.CreateCertificate(rand.Reader, ca, ca, &key.PublicKey, key)
 
     if err != nil {
-        return nil, nil, nil, err
+        return nil, nil, err
     }
+
+    keyData = pem.EncodeToMemory(&pem.Block{
+        Type: "RSA PRIVATE KEY",
+        Bytes: keyData,
+    })
+
+    certData = pem.EncodeToMemory(&pem.Block{
+        Type: "CERTIFICATE",
+        Bytes: certData,
+    })
 
     return
-}
-
-func parseCertificate(keyData, certData []byte) (key *rsa.PrivateKey, cert *x509.Certificate, certPool *x509.CertPool, err error) {
-    key, err = x509.ParsePKCS1PrivateKey(keyData)
-
-    if err != nil {
-        return nil, nil, nil, err
-    }
-
-    cert, err = x509.ParseCertificate(certData)
-
-    if err != nil {
-        return nil, nil, nil, err
-    }
-
-    certPool = x509.NewCertPool()
-    err = nil
-
-    certPool.AddCert(cert)
-    return
-}
-
-func createTLSConfig(key *rsa.PrivateKey, certPool *x509.CertPool) *tls.Config {
-    return &tls.Config{
-        Certificates: []tls.Certificate{tls.Certificate{
-            Certificate: certPool.Subjects(),
-            PrivateKey: key,
-        }},
-        MinVersion: tls.VersionTLS12,
-    }
 }
