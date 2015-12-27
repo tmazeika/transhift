@@ -125,7 +125,7 @@ func (s *Storage) PrivKey() (*rsa.PrivateKey, error) {
         pub, err := x509.MarshalPKIXPublicKey(&s.privKey.PublicKey)
 
         if err != nil {
-            return err
+            return nil, err
         }
 
         pubPemData := pem.EncodeToMemory(&pem.Block{
@@ -140,7 +140,7 @@ func (s *Storage) PrivKey() (*rsa.PrivateKey, error) {
         }
     }
 
-    return s.privKey
+    return s.privKey, nil
 }
 
 func getFile(path string) (*os.File, error) {
