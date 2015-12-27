@@ -114,18 +114,17 @@ func (m *ProtoMetaInfo) Serialize() []byte {
 }
 
 func (m *ProtoMetaInfo) Deserialize(b []byte) {
-    buffer := bytes.NewBuffer(b)
+    scanner := bufio.NewScanner(bytes.NewReader(b))
 
     // fileName
-    m.fileName, _ = buffer.ReadString('\n')
-    m.fileName = m.fileName[:len(m.fileName) - 1] // trim leading \n
+    scanner.Scan()
+    m.fileName = scanner.Text()
     // fileSize
-    fileSize, _ := buffer.ReadBytes('\n')
-    fileSize = fileSize[:len(fileSize) - 1] // trim leading \n
-    m.fileSize = binary.BigEndian.Uint64(fileSize)
+    scanner.Scan()
+    m.fileSize = binary.BigEndian.Uint64(scanner.Bytes())
     // fileChecksum
-    m.fileChecksum, _ = buffer.ReadBytes('\n')
-    m.fileChecksum = m.fileChecksum[:len(m.fileChecksum) - 1] // trim leading \n
+    scanner.Scan()
+    m.fileChecksum = scanner.Bytes()
 }
 
 func (m *ProtoMetaInfo) String() string {
