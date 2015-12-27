@@ -119,7 +119,7 @@ func (s *Storage) PrivKey() (*rsa.PrivateKey, error) {
             return nil, err
         }
 
-        block, bytes := pem.Decode(bytes)
+        block, _ := pem.Decode(bytes)
         s.privKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 
         if err != nil {
