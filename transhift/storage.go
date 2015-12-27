@@ -8,6 +8,7 @@ import (
     "crypto/rsa"
     "io/ioutil"
     "fmt"
+    "crypto/x509"
 )
 
 type Config struct {
@@ -22,8 +23,10 @@ func (c *Config) PuncherPortStr() string {
 type Storage struct {
     customDir string
 
-    config *Config
-    privKey *rsa.PrivateKey
+    config    *Config
+    key       *rsa.PrivateKey
+    cert      *x509.Certificate
+    certPool  *x509.CertPool
 }
 
 func (s *Storage) Dir() (string, error) {
@@ -89,74 +92,76 @@ func (s *Storage) Config() (*Config, error) {
     return config, nil
 }
 
-func (s *Storage) PrivKey() (*rsa.PrivateKey, error) {
-    const KeyBits = 4096
-    const PrivFileName = "priv.pem"
-    const PubFileName = "pub.pem"
+func (s *Storage) Crypto() (*rsa.PrivateKey, *x509.Certificate, *x509.CertPool, error) {
+    const KeyFileName = "key"
+    const CertFileName = "certificate"
     dir, err := s.Dir()
 
     if err != nil {
-        return nil, err
+        return nil, nil, nil, err
     }
 
-    privFilePath := filepath.Join(dir, PrivFileName)
-    pubFilePath := filepath.Join(dir, PubFileName)
-    forceNewPubKeyWrite := false
+    keyFilePath := filepath.Join(dir, KeyFileName)
+    certFilePath := filepath.Join(dir, CertFileName)
 
-    if ! fileExists(privFilePath, false) {
-        fmt.Print("Generating keys... ")
+    if ! fileExists(keyFilePath, false) || ! fileExists(certFilePath, false) {
+        fmt.Print("Generating crypto... ")
 
-        forceNewPubKeyWrite = true
-        var pemData []byte
-        s.privKey, pemData, err = generatePrivateKey()
+        var keyData, certData []byte
+        s.key, keyData, certData, err = createCertificate()
 
         if err != nil {
-            return nil, err
+            return nil, nil, nil, err
         }
 
-        err = ioutil.WriteFile(privFilePath, pemData, 0600)
+        err = ioutil.WriteFile(keyFilePath, keyData, 0600)
 
         if err != nil {
-            return nil, err
+            return nil, nil, nil, err
+        }
+
+        err = ioutil.WriteFile(certFilePath, certData, 0600)
+
+        if err != nil {
+            return nil, nil, nil, err
         }
 
         fmt.Println("done")
-    } else {
-        privFile, err := getFile(privFilePath)
-
-        if err != nil {
-            return nil, err
-        }
-
-        defer privFile.Close()
-        pemData, err := ioutil.ReadAll(privFile)
-
-        if err != nil {
-            return nil, err
-        }
-
-        s.privKey, err = parsePrivateKeyPem(pemData)
-
-        if err != nil {
-            return nil, err
-        }
     }
 
-    if forceNewPubKeyWrite || ! fileExists(pubFilePath, false) {
-        pemData, err := getPublicKeyPem(s.privKey)
+    keyFile, err := getFile(keyFilePath)
 
-        if err != nil {
-            return nil, err
-        }
-
-        err = ioutil.WriteFile(pubFilePath, pemData, 0644)
-
-        if err != nil {
-            return nil, err
-        }
+    if err != nil {
+        return nil, nil, nil, err
     }
 
-    return s.privKey, nil
+    defer keyFile.Close()
+    certFile, err := getFile(certFilePath)
+
+    if err != nil {
+        return nil, nil, nil, err
+    }
+
+    defer certFile.Close()
+    keyData, err := ioutil.ReadAll(keyFile)
+
+    if err != nil {
+        return nil, nil, nil, err
+    }
+
+    certData, err := ioutil.ReadAll(certFile)
+
+    if err != nil {
+        return nil, nil, nil, err
+    }
+
+    s.key, s.cert, s.certPool, err = parseCertificate(keyData, certData)
+
+    if err != nil {
+        return nil, nil, nil, err
+    }
+
+    return s.key, s.cert, s.certPool, nil
 }
 
 func getFile(path string) (*os.File, error) {

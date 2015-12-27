@@ -133,7 +133,7 @@ func Download(c *cli.Context) {
         os.Exit(1)
     }
 
-    _, err = storage.PrivKey()
+    err = storage.Crypto()
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
