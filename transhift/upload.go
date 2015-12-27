@@ -23,7 +23,7 @@ func (u UploadArgs) AbsFilePath() string {
 }
 
 type DownloadPeer struct {
-    conn  tls.Conn
+    conn  *tls.Conn
     inOut bufio.ReadWriter
 }
 
@@ -55,7 +55,7 @@ func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
         conn, err := net.Dial("tcp", remoteAddr)
 
         if err == nil {
-            p.conn = *tls.Client(conn, &tls.Config{
+            p.conn = tls.Client(conn, &tls.Config{
                 Certificates: []tls.Certificate{cert},
                 // TODO: baaaaaad
                 InsecureSkipVerify: true,
@@ -63,7 +63,7 @@ func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
         }
     }
 
-    p.inOut = bufio.NewReadWriter(bufio.NewReader(&p.conn), bufio.NewWriter(&p.conn))
+    p.inOut = *bufio.NewReadWriter(bufio.NewReader(p.conn), bufio.NewWriter(p.conn))
 
     return CheckCompatibility(p.inOut)
 }
@@ -120,9 +120,16 @@ func Upload(c *cli.Context) {
         os.Exit(1)
     }
 
+    cert, err := storage.Crypto()
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+
     fmt.Print("Waiting for peer... ")
 
-    remoteAddr, err := peer.PunchHole(args, config)
+    remoteAddr, err := peer.PunchHole(args.peerUid, config)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
@@ -132,7 +139,7 @@ func Upload(c *cli.Context) {
     fmt.Println("done")
     fmt.Printf("Connecting to '%s'... ", args.peerUid)
 
-    err = peer.Connect(remoteAddr, storage)
+    err = peer.Connect(cert, remoteAddr)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
