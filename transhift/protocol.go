@@ -79,29 +79,29 @@ func (m FileInfo) MarshalBinary() (data []byte, err error) {
 
     // name
     if _, err := buffer.WriteString(m.name); err != nil {
-        return err
+        return nil, err
     }
 
     if _, err := buffer.WriteRune('\n'); err != nil {
-        return err
+        return nil, err
     }
 
     // size
     if _, err := buffer.Write(uint64ToBytes(m.size)); err != nil {
-        return err
+        return nil, err
     }
 
     if _, err := buffer.WriteRune('\n'); err != nil {
-        return err
+        return nil, err
     }
 
     // checksum
     if _, err := buffer.Write(m.checksum); err != nil {
-        return err
+        return nil, err
     }
 
     if _, err := buffer.WriteRune('\n'); err != nil {
-        return err
+        return nil, err
     }
 
     return buffer.Bytes(), nil

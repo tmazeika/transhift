@@ -16,7 +16,7 @@ type Config struct {
     PuncherPort uint16
 }
 
-func (c *Config) PuncherPortStr() string {
+func (c Config) PuncherPortStr() string {
     return fmt.Sprint(c.PuncherPort)
 }
 
@@ -27,7 +27,7 @@ type Storage struct {
     cert      x509.Certificate
 }
 
-func (s *Storage) Dir() (string, error) {
+func (s Storage) Dir() (string, error) {
     const DefDirName = ".transhift"
 
     if len(s.customDir) == 0 {
@@ -43,7 +43,7 @@ func (s *Storage) Dir() (string, error) {
     }
 }
 
-func (s *Storage) ConfigFile() (*os.File, error) {
+func (s Storage) ConfigFile() (*os.File, error) {
     const FileName = "config.json"
     dir, err := s.Dir()
 
@@ -54,7 +54,7 @@ func (s *Storage) ConfigFile() (*os.File, error) {
     filePath := filepath.Join(dir, FileName)
 
     if ! fileExists(filePath, false) {
-        defConfig := &Config{
+        defConfig := Config{
             PuncherHost: "127.0.0.1", // TODO: change
             PuncherPort: 50977,
         }
@@ -87,6 +87,7 @@ func (s *Storage) Config() (*Config, error) {
     }
 
     defer file.Close()
+
     config := &Config{}
     err = json.NewDecoder(file).Decode(config)
 
@@ -95,10 +96,11 @@ func (s *Storage) Config() (*Config, error) {
     }
 
     s.config = config
+
     return config, nil
 }
 
-func (s *Storage) Crypto() (tls.Certificate, error) {
+func (s Storage) Crypto() (tls.Certificate, error) {
     const CertFileName = "cert.pem"
     const KeyFileName = "cert.key"
     dir, err := s.Dir()

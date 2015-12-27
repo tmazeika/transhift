@@ -8,6 +8,7 @@ import (
     "fmt"
     "os"
     "crypto/tls"
+    "bytes"
 )
 
 type UploadArgs struct {
@@ -16,18 +17,17 @@ type UploadArgs struct {
     appDir   string
 }
 
-func (a UploadArgs) AbsFilePath() string {
-    filePath, _ := filepath.Abs(a.filePath)
+func (u UploadArgs) AbsFilePath() string {
+    filePath, _ := filepath.Abs(u.filePath)
     return filePath
 }
 
 type DownloadPeer struct {
-    conn     *tls.Conn
-    reader   *bufio.Reader
-    writer   *bufio.Writer
+    conn  tls.Conn
+    inOut bufio.ReadWriter
 }
 
-func (p *DownloadPeer) PunchHole(args UploadArgs, config *Config) (remoteAddr string, err error) {
+func (DownloadPeer) PunchHole(peerUid string, config *Config) (remoteAddr string, err error) {
     conn, err := net.Dial("tcp", net.JoinHostPort(config.PuncherHost, config.PuncherPortStr()))
 
     if err != nil {
@@ -35,16 +35,19 @@ func (p *DownloadPeer) PunchHole(args UploadArgs, config *Config) (remoteAddr st
     }
 
     defer conn.Close()
-    conn.Write([]byte{byte(UploadClientType)})
-    conn.Write([]byte(args.peer))
-    line, err := bufio.NewReader(conn).ReadBytes('\n')
-    line = line[:len(line) - 1] // trim trailing \n
 
-    if err != nil {
+    var buffer bytes.Buffer
+
+    buffer.Write(messageToBytes(UploadClientType))
+    buffer.WriteString(peerUid)
+
+    scanner := bufio.NewScanner(bufio.NewReader(conn))
+
+    if ! scanner.Scan() {
         return "", err
     }
 
-    return string(line), nil
+    return scanner.Text(), nil
 }
 
 func (p *DownloadPeer) Connect(remoteAddr string, storage *Storage) error {
