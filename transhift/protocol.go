@@ -139,12 +139,14 @@ func (m *FileInfo) UnmarshalBinary(data []byte) error {
     }
 
     m.name = scanner.Text()
+
     // size
     if ! scanner.Scan() {
         return scanner.Err()
     }
 
     m.size = bytesToUint64(scanner.Bytes())
+
     // checksum
     if ! scanner.Scan() {
         return scanner.Err()
