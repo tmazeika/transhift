@@ -10,6 +10,7 @@ import (
     "crypto/tls"
     "bytes"
     "time"
+    "github.com/transhift/common/common"
 )
 
 type UploadArgs struct {
@@ -28,8 +29,8 @@ type DownloadPeer struct {
     inOut *bufio.ReadWriter
 }
 
-func (DownloadPeer) PunchHole(peerUid string, cert tls.Certificate, config *Config) (remoteAddr string, err error) {
-    conn, err := tls.Dial("tcp", net.JoinHostPort(config.PuncherHost, config.PuncherPortStr()), &tls.Config{
+func (DownloadPeer) PunchHole(peerUid string, cert tls.Certificate, config common.Config) (remoteAddr string, err error) {
+    conn, err := tls.Dial("tcp", net.JoinHostPort(config["puncher_host"], config["puncher_port"]), &tls.Config{
         Certificates: []tls.Certificate{cert},
         InsecureSkipVerify: true,
         MinVersion: tls.VersionTLS12,
@@ -125,17 +126,21 @@ func Upload(c *cli.Context) {
     }
 
     peer := DownloadPeer{}
-    storage := Storage{
-        customDir: args.appDir,
+    storage := &common.Storage{
+        CustomDir: args.appDir,
+        Config: common.Config{
+            "puncher_host": "104.236.76.95",
+            "puncher_port": "50977",
+        },
     }
-    config, err := storage.Config()
+    err := storage.LoadConfig()
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
         os.Exit(1)
     }
 
-    cert, err := storage.Certificate()
+    cert, err := storage.Certificate(CertFileName, KeyFileName)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
@@ -144,7 +149,7 @@ func Upload(c *cli.Context) {
 
     fmt.Print("Waiting for peer... ")
 
-    remoteAddr, err := peer.PunchHole(args.peerUid, cert, config)
+    remoteAddr, err := peer.PunchHole(args.peerUid, cert, storage.Config)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
@@ -183,7 +188,7 @@ func Upload(c *cli.Context) {
         os.Exit(1)
     }
 
-    checksum, err := calculateFileChecksum(file)
+    checksum, err := common.CalculateFileChecksum(file)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)

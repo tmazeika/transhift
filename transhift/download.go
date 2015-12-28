@@ -2,6 +2,7 @@ package transhift
 
 import (
     "github.com/codegangsta/cli"
+    "github.com/transhift/common/common"
     "net"
     "bufio"
     "bytes"
@@ -29,8 +30,8 @@ type UploadPeer struct {
     fileInfo FileInfo
 }
 
-func (UploadPeer) PunchHole(cert tls.Certificate, config Config) (uid string, localPort string, err error) {
-    conn, err := tls.Dial("tcp", net.JoinHostPort(config.PuncherHost, config.PuncherPortStr()), &tls.Config{
+func (UploadPeer) PunchHole(cert tls.Certificate, config common.Config) (uid string, localPort string, err error) {
+    conn, err := tls.Dial("tcp", net.JoinHostPort(config["puncher_host"], config["puncher_port"]), &tls.Config{
         Certificates: []tls.Certificate{cert},
         InsecureSkipVerify: true,
         MinVersion: tls.VersionTLS12,
@@ -128,18 +129,21 @@ func Download(c *cli.Context) {
         appDir:      c.GlobalString("app-dir"),
     }
 
-    storage := &Storage{
-        customDir: args.appDir,
+    storage := &common.Storage{
+        CustomDir: args.appDir,
+        Config: common.Config{
+            "puncher_host": "104.236.76.95",
+            "puncher_port": "50977",
+        },
     }
-
-    config, err := storage.Config()
+    err := storage.LoadConfig()
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
         os.Exit(1)
     }
 
-    cert, err := storage.Certificate()
+    cert, err := storage.Certificate(CertFileName, KeyFileName)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
@@ -147,7 +151,7 @@ func Download(c *cli.Context) {
     }
 
     peer := UploadPeer{}
-    uid, localPort, err := peer.PunchHole(cert, *config)
+    uid, localPort, err := peer.PunchHole(cert, storage.Config)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, "Unable to retrieve UID")
@@ -205,7 +209,7 @@ func Download(c *cli.Context) {
     progressBar.Stop(true)
     fmt.Print("Verifying file... ")
 
-    checksum, err := calculateFileChecksum(file)
+    checksum, err := common.CalculateFileChecksum(file)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
