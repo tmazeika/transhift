@@ -67,7 +67,7 @@ func (DownloadPeer) PunchHole(peerUid string, cert tls.Certificate, config commo
 
         puncherResponse := scanner.Bytes()[0]
 
-        switch puncherResponse {
+        switch common.ProtocolMessage(puncherResponse) {
         case common.PuncherPing:
             // TODO: error check
             conn.Write(common.Mtob(common.PuncherPong))
@@ -95,7 +95,7 @@ func (DownloadPeer) PunchHole(peerUid string, cert tls.Certificate, config commo
 
         puncherResponse := scanner.Bytes()[0]
 
-        switch puncherResponse {
+        switch common.ProtocolMessage(puncherResponse) {
         case common.PuncherReady:
             break
         case common.PuncherNotReady:

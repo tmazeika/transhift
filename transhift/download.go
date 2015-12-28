@@ -66,19 +66,19 @@ func (UploadPeer) PunchHole(cert tls.Certificate, config common.Config) (uid str
 
     for {
         if ! scanner.Scan() {
-            return "", scanner.Err()
+            return "", "", scanner.Err()
         }
 
         puncherResponse := scanner.Bytes()[0]
 
-        switch puncherResponse {
+        switch common.ProtocolMessage(puncherResponse) {
         case common.PuncherPing:
             // TODO: error check
             conn.Write(common.Mtob(common.PuncherPong))
         case common.PuncherReady:
             break
         default:
-            return "", fmt.Errorf("protocol error: expected one of valid responses, got 0x%X", puncherResponse)
+            return "", "", fmt.Errorf("protocol error: expected one of valid responses, got 0x%X", puncherResponse)
         }
     }
 
