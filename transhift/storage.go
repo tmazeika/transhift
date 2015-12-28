@@ -22,7 +22,6 @@ func (c Config) PuncherPortStr() string {
 
 type Storage struct {
     customDir string
-
     config    *Config
     cert      x509.Certificate
 }
