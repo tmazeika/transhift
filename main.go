@@ -1,7 +1,7 @@
 package main
 
 import (
-    "github.com/bionicrm/transhift/transhift"
+    "github.com/transhift/transhift/transhift"
     "github.com/codegangsta/cli"
     "os"
 )
