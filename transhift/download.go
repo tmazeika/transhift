@@ -11,8 +11,8 @@ import (
 )
 
 type DownloadArgs struct {
-    appDir      string
     destination string
+    appDir      string
 }
 
 func (a DownloadArgs) DestinationOrDef(def string) string {
@@ -122,8 +122,8 @@ func (p UploadPeer) SendMessage(msg ProtocolMessage) {
 
 func Download(c *cli.Context) {
     args := DownloadArgs{
-        appDir:      c.GlobalString("app-dir"),
         destination: c.String("destination"),
+        appDir:      c.GlobalString("app-dir"),
     }
 
     storage := &Storage{
