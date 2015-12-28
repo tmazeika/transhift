@@ -54,7 +54,7 @@ func (s Storage) ConfigFile() (*os.File, error) {
 
     if ! fileExists(filePath, false) {
         defConfig := Config{
-            PuncherHost: "127.0.0.1", // TODO: change
+            PuncherHost: "104.236.76.95",
             PuncherPort: 50977,
         }
 
