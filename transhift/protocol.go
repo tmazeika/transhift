@@ -5,6 +5,7 @@ import (
     "encoding/binary"
     "fmt"
     "bufio"
+    "github.com/transhift/common/common"
 )
 
 const (
@@ -25,18 +26,6 @@ const (
     // ChunkSize is the number of bytes that are read from the file each
     // iteration of the upload loop.
     ChunkSize = 4096
-
-    // UidLength is the length of the UID that the puncher server issues.
-    UidLength = 16
-)
-
-type ProtocolMessage byte
-
-const (
-    DownloadClientType ProtocolMessage = 0x00
-    UploadClientType   ProtocolMessage = 0x01
-    ChecksumMismatch   ProtocolMessage = 0x02
-    ChecksumMatch      ProtocolMessage = 0x03
 )
 
 func CheckCompatibility(inOut *bufio.ReadWriter) error {
@@ -191,6 +180,6 @@ func byteToBool(b byte) bool {
     return b != 0x00
 }
 
-func messageToBytes(msg ProtocolMessage) []byte {
+func messageToBytes(msg common.ProtocolMessage) []byte {
     return []byte{byte(msg)}
 }

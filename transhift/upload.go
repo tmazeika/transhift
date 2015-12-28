@@ -44,7 +44,7 @@ func (DownloadPeer) PunchHole(peerUid string, cert tls.Certificate, config commo
 
     var buffer bytes.Buffer
 
-    if _, err := buffer.Write(messageToBytes(UploadClientType)); err != nil {
+    if _, err := buffer.Write(messageToBytes(common.UploadClientType)); err != nil {
         return "", err
     }
 
@@ -98,15 +98,15 @@ func (p DownloadPeer) SendFileInfo(fileInfo FileInfo) error {
     return nil
 }
 
-func (p DownloadPeer) ReceiveMessages() (ch chan ProtocolMessage) {
-    ch = make(chan ProtocolMessage)
+func (p DownloadPeer) ReceiveMessages() (ch chan common.ProtocolMessage) {
+    ch = make(chan common.ProtocolMessage)
     scanner := bufio.NewScanner(p.inOut.Reader)
 
     scanner.Split(bufio.ScanBytes)
 
     go func() {
         for scanner.Scan() {
-            ch <- ProtocolMessage(scanner.Bytes()[0])
+            ch <- common.ProtocolMessage(scanner.Bytes()[0])
         }
     }()
 
@@ -120,8 +120,8 @@ func Upload(c *cli.Context) {
         appDir:   c.GlobalString("app-dir"),
     }
 
-    if len(args.peerUid) != UidLength {
-        fmt.Fprintf(os.Stderr, "Peer UID should be %d characters\n", UidLength)
+    if len(args.peerUid) != common.UidLength {
+        fmt.Fprintf(os.Stderr, "Peer UID should be %d characters\n", common.UidLength)
         os.Exit(1)
     }
 
@@ -225,9 +225,9 @@ func Upload(c *cli.Context) {
     fmt.Print("Verifying file... ")
 
     switch <- msgCh {
-    case ChecksumMatch:
+    case common.ChecksumMatch:
         fmt.Println("done")
-    case ChecksumMismatch:
+    case common.ChecksumMismatch:
         fmt.Fprintln(os.Stderr, "checksum mismatch")
         os.Exit(1)
     default:

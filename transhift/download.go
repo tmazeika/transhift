@@ -43,11 +43,11 @@ func (UploadPeer) PunchHole(cert tls.Certificate, config common.Config) (uid str
 
     defer conn.Close()
 
-    if _, err := conn.Write(messageToBytes(DownloadClientType)); err != nil {
+    if _, err := conn.Write(messageToBytes(common.DownloadClientType)); err != nil {
         return "", "", err
     }
 
-    uidBuffer := make([]byte, UidLength)
+    uidBuffer := make([]byte, common.UidLength)
 
     if _, err := conn.Read(uidBuffer); err != nil {
         return "", "", err
@@ -119,7 +119,7 @@ func (p UploadPeer) ReceiveChunks() (ch chan []byte) {
     return
 }
 
-func (p UploadPeer) SendMessage(msg ProtocolMessage) {
+func (p UploadPeer) SendMessage(msg common.ProtocolMessage) {
     p.conn.Write(messageToBytes(msg))
 }
 
@@ -217,10 +217,10 @@ func Download(c *cli.Context) {
     }
 
     if bytes.Equal(checksum, peer.fileInfo.checksum) {
-        peer.SendMessage(ChecksumMatch)
+        peer.SendMessage(common.ChecksumMatch)
         fmt.Println("done")
     } else {
-        peer.SendMessage(ChecksumMismatch)
+        peer.SendMessage(common.ChecksumMismatch)
         fmt.Fprintln(os.Stderr, "checksum mismatch")
         os.Exit(1)
     }
