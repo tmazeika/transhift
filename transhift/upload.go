@@ -144,7 +144,7 @@ func Upload(c *cli.Context) {
 
     fmt.Print("Waiting for peer... ")
 
-    remoteAddr, err := peer.PunchHole(args.peerUid, config)
+    remoteAddr, err := peer.PunchHole(args.peerUid, cert, config)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
