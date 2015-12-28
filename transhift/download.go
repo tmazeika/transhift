@@ -43,7 +43,7 @@ func (UploadPeer) PunchHole(cert tls.Certificate, config common.Config) (uid str
 
     defer conn.Close()
 
-    if _, err := conn.Write(messageToBytes(common.DownloadClientType)); err != nil {
+    if _, err := conn.Write(common.Mtob(common.DownloadClientType)); err != nil {
         return "", "", err
     }
 
@@ -120,7 +120,7 @@ func (p UploadPeer) ReceiveChunks() (ch chan []byte) {
 }
 
 func (p UploadPeer) SendMessage(msg common.ProtocolMessage) {
-    p.conn.Write(messageToBytes(msg))
+    p.conn.Write(common.Mtob(msg))
 }
 
 func Download(c *cli.Context) {

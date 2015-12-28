@@ -44,7 +44,7 @@ func (DownloadPeer) PunchHole(peerUid string, cert tls.Certificate, config commo
 
     var buffer bytes.Buffer
 
-    if _, err := buffer.Write(messageToBytes(common.UploadClientType)); err != nil {
+    if _, err := buffer.Write(common.Mtob(common.UploadClientType)); err != nil {
         return "", err
     }
 
