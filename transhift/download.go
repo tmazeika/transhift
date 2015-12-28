@@ -137,7 +137,7 @@ func Download(c *cli.Context) {
         os.Exit(1)
     }
 
-    cert, err := storage.Crypto()
+    cert, err := storage.Certificate()
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)

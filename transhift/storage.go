@@ -100,7 +100,7 @@ func (s *Storage) Config() (*Config, error) {
     return config, nil
 }
 
-func (s Storage) Crypto() (tls.Certificate, error) {
+func (s Storage) Certificate() (tls.Certificate, error) {
     const CertFileName = "cert.pem"
     const KeyFileName = "cert.key"
     dir, err := s.Dir()
