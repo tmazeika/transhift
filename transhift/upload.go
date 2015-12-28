@@ -181,10 +181,17 @@ func Upload(c *cli.Context) {
         os.Exit(1)
     }
 
+    checksum, err := calculateFileChecksum(file)
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+
     metaInfo := FileInfo{
         name:     filepath.Base(file.Name()),
         size:     uint64(fileInfo.Size()),
-        checksum: calculateFileChecksum(file),
+        checksum: checksum,
     }
 
     peer.SendFileInfo(metaInfo)

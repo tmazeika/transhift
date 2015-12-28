@@ -203,7 +203,14 @@ func Download(c *cli.Context) {
     progressBar.Stop(true)
     fmt.Print("Verifying file... ")
 
-    if bytes.Equal(calculateFileChecksum(file), peer.fileInfo.checksum) {
+    checksum, err := calculateFileChecksum(file)
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+
+    if bytes.Equal(checksum, peer.fileInfo.checksum) {
         peer.SendMessage(ChecksumMatch)
         fmt.Println("done")
     } else {

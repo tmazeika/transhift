@@ -12,10 +12,24 @@ import (
     "encoding/pem"
 )
 
-func calculateFileChecksum(file *os.File) []byte {
+func calculateFileChecksum(file *os.File) ([]byte, error) {
     hash := sha256.New()
-    io.Copy(hash, file)
-    return hash.Sum(nil)
+
+    if _, err := io.Copy(hash, file); err != nil {
+        return nil, err
+    }
+
+    return hash.Sum(nil), nil
+}
+
+func calculateBytesHash(bytes []byte) ([]byte, error) {
+    hash := sha256.New()
+
+    if _, err := hash.Write(bytes); err != nil {
+        return nil, err
+    }
+
+    return hash.Sum(nil), nil
 }
 
 func createCertificate() (keyData []byte, certData []byte, err error) {
