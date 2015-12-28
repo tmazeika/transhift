@@ -58,11 +58,54 @@ func (DownloadPeer) PunchHole(peerUid string, cert tls.Certificate, config commo
 
     scanner := bufio.NewScanner(bufio.NewReader(conn))
 
+    scanner.Split(bufio.ScanBytes)
+
+    for {
+        if ! scanner.Scan() {
+            return "", scanner.Err()
+        }
+
+        puncherResponse := scanner.Bytes()[0]
+
+        switch puncherResponse {
+        case common.PuncherPing:
+            // TODO: error check
+            conn.Write(common.Mtob(common.PuncherPong))
+        case common.PuncherEndPing:
+            break
+        default:
+            return "", fmt.Errorf("protocol error: expected one of valid responses, got 0x%X", puncherResponse)
+        }
+    }
+
+    scanner.Split(bufio.ScanLines)
+
     if ! scanner.Scan() {
         return "", scanner.Err()
     }
 
-    return scanner.Text(), nil
+    remoteAddr = scanner.Text()
+
+    scanner.Split(bufio.ScanBytes)
+
+    for {
+        if ! scanner.Scan() {
+            return "", scanner.Err()
+        }
+
+        puncherResponse := scanner.Bytes()[0]
+
+        switch puncherResponse {
+        case common.PuncherReady:
+            break
+        case common.PuncherNotReady:
+            return "", fmt.Errorf("peer disconnected")
+        default:
+            return "", fmt.Errorf("protocol error: expected one of valid responses, got 0x%X", puncherResponse)
+        }
+    }
+
+    return
 }
 
 func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
