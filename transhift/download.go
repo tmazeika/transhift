@@ -29,9 +29,12 @@ type UploadPeer struct {
     fileInfo FileInfo
 }
 
-func (UploadPeer) PunchHole(config Config) (uid string, localPort string, err error) {
-    // TODO: use tls.Dial
-    conn, err := net.Dial("tcp", net.JoinHostPort(config.PuncherHost, config.PuncherPortStr()))
+func (UploadPeer) PunchHole(cert tls.Certificate, config Config) (uid string, localPort string, err error) {
+    conn, err := tls.Dial("tcp", net.JoinHostPort(config.PuncherHost, config.PuncherPortStr()), &tls.Config{
+        Certificates: []tls.Certificate{cert},
+        InsecureSkipVerify: true,
+        MinVersion: tls.VersionTLS12,
+    })
 
     if err != nil {
         return "", "", err
