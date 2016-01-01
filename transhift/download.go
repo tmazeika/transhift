@@ -60,6 +60,7 @@ func (UploadPeer) PunchHole(cert tls.Certificate, config common.Config) (uid str
     }
 
     uid = string(uidBuffer)
+
     scanner := bufio.NewScanner(bufio.NewReader(conn))
 
     scanner.Split(bufio.ScanBytes)

@@ -69,9 +69,12 @@ func (DownloadPeer) PunchHole(peerUid string, cert tls.Certificate, config commo
 
         switch common.ProtocolMessage(puncherResponse) {
         case common.PuncherPing:
+            fmt.Println("<< PuncherPing")
             // TODO: error check
             conn.Write(common.Mtob(common.PuncherPong))
+            fmt.Println(">> PuncherPong")
         case common.PuncherEndPing:
+            fmt.Println("<< PuncherEndPing")
             break
         default:
             return "", fmt.Errorf("protocol error: expected one of valid responses, got 0x%X", puncherResponse)
@@ -97,8 +100,10 @@ func (DownloadPeer) PunchHole(peerUid string, cert tls.Certificate, config commo
 
         switch common.ProtocolMessage(puncherResponse) {
         case common.PuncherReady:
+            fmt.Println("<< PuncherReady")
             break
         case common.PuncherNotReady:
+            fmt.Println("<< PuncherNotReady")
             return "", fmt.Errorf("peer disconnected")
         default:
             return "", fmt.Errorf("protocol error: expected one of valid responses, got 0x%X", puncherResponse)
