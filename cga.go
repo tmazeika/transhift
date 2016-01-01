@@ -14,6 +14,7 @@ import (
     "os"
     "encoding/pem"
     "unsafe"
+    "time"
 )
 
 const (
@@ -47,7 +48,17 @@ func generateCga() {
 
     ptr := unsafe.Pointer(&pub[0])
 
-    fmt.Println(C.generate_hash_2(4, 2, 512, (*C.u8) (ptr)));
+    start := time.Now()
+
+    var hash2 *C.u8 = C.generate_hash_2(4, 2, 512, (*C.u8) (ptr))
+
+    end := time.Now()
+
+    fmt.Println((*[1 << 30] C.u8) (unsafe.Pointer(hash2))[:14:14])
+
+    fmt.Println("start - end = ", end.Sub(start).Nanoseconds())
+
+    return
 
     modifier := make([]byte, 16)
     rand.Read(modifier)
