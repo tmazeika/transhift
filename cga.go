@@ -1,5 +1,11 @@
 package main
 
+/*
+#cgo LDFLAGS: -L./lib -lhash_2_cga
+#include "./lib/hash_2_cga.h"
+ */
+import "C"
+
 import (
     "crypto/rand"
     "crypto/sha1"
@@ -7,6 +13,7 @@ import (
     "io/ioutil"
     "os"
     "encoding/pem"
+    "unsafe"
 )
 
 const (
@@ -18,7 +25,7 @@ func main() {
 }
 
 func generateCga() {
-    file, err := os.Open("/home/bionicrm/Code/GoCode/src/github.com/transhift/transhift/test/download/cert.pub")
+    file, err := os.Open("test/download/cert.pub")
 
     if err != nil {
         panic(err)
@@ -38,9 +45,9 @@ func generateCga() {
         panic(err)
     }
 
-    if err != nil {
-        panic(err)
-    }
+    ptr := unsafe.Pointer(&pub[0])
+
+    fmt.Println(C.generate_hash_2(4, 2, 512, (*C.u8) (ptr)));
 
     modifier := make([]byte, 16)
     rand.Read(modifier)
