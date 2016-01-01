@@ -1,0 +1,13 @@
+[package]
+name = "hash_2_cga"
+version = "0.1.0"
+authors = ["T.J. Mazeika <t@mazeika.me>"]
+
+[dependencies]
+sha1 = "0.1.1"
+rand = "0.3"
+libc = "0.1"
+
+[lib]
+name = "hash_2_cga"
+crate_type = ["dylib"]
