@@ -150,7 +150,14 @@ func Upload(c *cli.Context) {
 
     fmt.Print("Waiting for peer... ")
 
-    remoteAddr, err := peer.PunchHole(args.peerUid, cert, storage.Config)
+    err = peer.ConnectToPuncher(cert, storage.Config["puncher_host"], storage.Config["puncher_port"])
+
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+
+    remoteAddr, err := peer.PunchHole(args.peerUid)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
