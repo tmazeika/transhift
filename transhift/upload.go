@@ -13,7 +13,7 @@ import (
 )
 
 type UploadArgs struct {
-    peerUid  string
+    uid      string
     filePath string
     appDir   string
 }
@@ -114,9 +114,14 @@ func handleError(conn net.Conn, out chan common.Message, internal bool, format s
     return
 }
 
+func logAndExit(err error) {
+    fmt.Fprintln(os.Stderr, err)
+    os.Exit(1)
+}
+
 func Upload(c *cli.Context) {
     args := UploadArgs{
-        peerUid:  c.Args()[0],
+        uid:      c.Args()[0],
         filePath: c.Args()[1],
         appDir:   c.GlobalString("app-dir"),
     }
@@ -134,15 +139,13 @@ func Upload(c *cli.Context) {
     err := storage.LoadConfig()
 
     if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        os.Exit(1)
+        logAndExit(err)
     }
 
     cert, err := storage.Certificate(CertFileName, KeyFileName)
 
     if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        os.Exit(1)
+        logAndExit(err)
     }
 
     fmt.Print("Waiting for peer... ")
@@ -150,25 +153,22 @@ func Upload(c *cli.Context) {
     err = peer.ConnectToPuncher(cert, storage.Config["puncher_host"], storage.Config["puncher_port"])
 
     if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        os.Exit(1)
+        logAndExit(err)
     }
 
-    remoteAddr, err := peer.PunchHole(args.peerUid)
+    remoteAddr, err := peer.PunchHole(args.uid)
 
     if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        os.Exit(1)
+        logAndExit(err)
     }
 
     fmt.Println("done")
-    fmt.Printf("Connecting to '%s'... ", args.peerUid)
+    fmt.Printf("Connecting to '%s'... ", args.uid)
 
     err = peer.Connect(cert, remoteAddr)
 
     if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        os.Exit(1)
+        logAndExit(err)
     }
 
     defer peer.conn.Close()
