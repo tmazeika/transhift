@@ -75,7 +75,6 @@ func CheckCompatibility(in common.In, out common.Out) error {
 
     switch msg.Packet {
     case common.Compatible:
-        return nil
     case common.Incompatible:
         if ! localCompatible {
             return fmt.Errorf("incompatible versions %s and %s", Version, remoteVersion)
@@ -83,6 +82,8 @@ func CheckCompatibility(in common.In, out common.Out) error {
     default:
         return fmt.Errorf("expected compatibility status, got 0x%x", msg.Packet)
     }
+
+    return nil
 }
 
 func uint64Min(x, y uint64) uint64 {
