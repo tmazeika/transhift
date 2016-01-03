@@ -25,13 +25,14 @@ func (u UploadArgs) AbsFilePath() string {
 type DownloadPeer struct {
     InOut
 
+    cert *tls.Certificate
     conn *tls.Conn
     addr string
 }
 
-func (p *DownloadPeer) connectToPuncher(cert tls.Certificate, host string, port string) (err error) {
+func (p *DownloadPeer) connectToPuncher(host string, port string) (err error) {
     p.conn, err = tls.Dial("tcp", net.JoinHostPort(host, port), &tls.Config{
-        Certificates: []tls.Certificate{cert},
+        Certificates: []tls.Certificate{p.cert},
         InsecureSkipVerify: true,
         MinVersion: tls.VersionTLS12,
     })
@@ -41,13 +42,13 @@ func (p *DownloadPeer) connectToPuncher(cert tls.Certificate, host string, port 
 }
 
 func (p *DownloadPeer) sendClientType() error {
-    p.out.Ch <- common.Message{ common.Uploader, nil }
+    p.out.Ch <- common.Message{common.Uploader, nil}
     <- p.out.Done
     return p.out.Err
 }
 
 func (p *DownloadPeer) sendUid(uid string) error {
-    p.out.Ch <- common.Message{ common.UidRequest, []byte(uid) }
+    p.out.Ch <- common.Message{common.UidRequest, []byte(uid)}
     <- p.out.Done
     return p.out.Err
 }
@@ -71,8 +72,8 @@ func (p *DownloadPeer) receiveAddr() error {
     return nil
 }
 
-func (p *DownloadPeer) PunchHole(cert tls.Certificate, host, port, uid string) error {
-    err := p.connectToPuncher(cert, host, port)
+func (p *DownloadPeer) PunchHole(host, port, uid string) error {
+    err := p.connectToPuncher(host, port)
 
     if err != nil {
         return  err
@@ -133,11 +134,6 @@ func handleError(conn net.Conn, out chan common.Message, internal bool, format s
     return
 }
 
-func logAndExit(err error) {
-    fmt.Fprintln(os.Stderr, err)
-    os.Exit(1)
-}
-
 func Upload(c *cli.Context) {
     args := UploadArgs{
         uid:      c.Args()[0],
@@ -145,7 +141,6 @@ func Upload(c *cli.Context) {
         appDir:   c.GlobalString("app-dir"),
     }
 
-    peer := &DownloadPeer{}
     storage := &common.Storage{
         CustomDir: args.appDir,
 
@@ -158,31 +153,29 @@ func Upload(c *cli.Context) {
     err := storage.LoadConfig()
 
     if err != nil {
-        logAndExit(err)
+        common.LogAndExit(err)
     }
 
     cert, err := storage.Certificate(CertFileName, KeyFileName)
 
     if err != nil {
-        logAndExit(err)
+        common.LogAndExit(err)
+    }
+
+    peer := &DownloadPeer{
+        cert: cert,
     }
 
     fmt.Print("Getting peer address... ")
 
-    err = peer.ConnectToPuncher(cert, storage.Config["puncher_host"], storage.Config["puncher_port"])
+    err = peer.PunchHole(storage.Config["puncher_host"], storage.Config["puncher_port"], args.uid)
 
     if err != nil {
-        logAndExit(err)
-    }
-
-    remoteAddr, err := peer.PunchHole(args.uid)
-
-    if err != nil {
-        logAndExit(err)
+        common.LogAndExit(err)
     }
 
     fmt.Println("done")
-    fmt.Printf("Connecting... ", args.uid)
+    fmt.Print("Connecting... ")
 
     err = peer.Connect(cert, remoteAddr)
 
