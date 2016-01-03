@@ -215,7 +215,11 @@ func Upload(c *cli.Context) {
     fmt.Println("done")
     fmt.Printf("Uploading '%s'...\n", args.AbsFilePath())
 
-    var bytesWritten uint64
+    // TODO: remove (placeholder)
+    <- in
+
+    // TODO: redo
+    /*var bytesWritten uint64
     progressBar := ProgressBar{
         current: &bytesWritten,
         total:   uint64(fileInfo.Size()),
@@ -243,5 +247,5 @@ func Upload(c *cli.Context) {
     default:
         fmt.Fprintln(os.Stderr, "protocol error")
         os.Exit(1)
-    }
+    }*/
 }
