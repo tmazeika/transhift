@@ -57,7 +57,7 @@ func (DownloadPeer) PunchHole(uid string, cert tls.Certificate, config common.Co
     msg, ok := <- in
 
     if ! ok {
-        common.HandleError(conn, out, true, "closing connection")
+        handleError(conn, out, true, "closing connection")
         return
     }
 
@@ -67,7 +67,7 @@ func (DownloadPeer) PunchHole(uid string, cert tls.Certificate, config common.Co
     case common.PeerNotFound:
         fmt.Fprintf(os.Stderr, "Peer not found")
     default:
-        common.HandleError(conn, out, false, "expected peer ready or peer not found, got 0x%x", msg.Packet)
+        handleError(conn, out, false, "expected peer ready or peer not found, got 0x%x", msg.Packet)
     }
 
     return
@@ -90,6 +90,24 @@ func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
     p.inOut = bufio.NewReadWriter(bufio.NewReader(p.conn), bufio.NewWriter(p.conn))
 
     return CheckCompatibility(p.inOut)
+}
+
+func handleError(conn net.Conn, out chan common.Message, internal bool, format string, a ...interface{}) {
+    var packet common.Packet
+    msg := fmt.Sprintf(format, a)
+
+    if internal {
+        packet = common.InternalError
+    } else {
+        packet = common.ProtocolError
+    }
+
+    fmt.Fprintln(os.Stderr, msg)
+
+    out <- common.Message{
+        Packet: packet,
+        Body:   []byte(msg),
+    }
 }
 
 func Upload(c *cli.Context) {
