@@ -121,14 +121,11 @@ func Upload(c *cli.Context) {
         appDir:   c.GlobalString("app-dir"),
     }
 
-    if len(args.peerUid) != common.UidLength {
-        fmt.Fprintf(os.Stderr, "Peer UID should be %d characters\n", common.UidLength)
-        os.Exit(1)
-    }
-
-    peer := DownloadPeer{}
+    peer := &DownloadPeer{}
     storage := &common.Storage{
         CustomDir: args.appDir,
+
+        // This is the default config. If it already exists, this means nothing.
         Config: common.Config{
             "puncher_host": "104.236.76.95",
             "puncher_port": "50977",
