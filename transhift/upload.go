@@ -25,7 +25,6 @@ func (u UploadArgs) AbsFilePath() string {
 
 type DownloadPeer struct {
     conn  *tls.Conn
-    inOut *bufio.ReadWriter
 }
 
 func (p *DownloadPeer) ConnectToPuncher(cert tls.Certificate, host string, port string) (err error) {
@@ -38,43 +37,45 @@ func (p *DownloadPeer) ConnectToPuncher(cert tls.Certificate, host string, port 
     return
 }
 
-func (p *DownloadPeer) PunchHole(uid string) (remoteAddr string, err error) {
+func (p *DownloadPeer) PunchHole(uid string) (string, error) {
     defer p.conn.Close()
 
     in, out := common.MessageChannel(p.conn)
 
     // Send client type.
-    out <- common.NewMesssageWithByte(common.ClientType, common.UploaderClientType)
+    out.Ch <- common.Message{ common.Uploader, nil }
+    <- out.Done
+
+    if out.Err != nil {
+        return "", out.Err
+    }
 
     // Send uid.
     out <- common.Message{
         Packet: common.UidRequest,
         Body:   []byte(uid),
     }
+    <- out.Done
+
+    if out.Err != nil {
+        return "", out.Err
+    }
 
     // Wait for PeerReady (or PeerNotFound).
-    msg, ok := <- in
+    msg, ok := <- in.Ch
 
     if ! ok {
-        // Some IO error occurred, so shut down the connection.
-        return "", handleError(p.conn, out, true, "closing connection")
+        return "", in.Err
     }
 
     switch msg.Packet {
     case common.PeerReady:
-        // If peer is ready, set the remote address.
-        remoteAddr = string(msg.Body)
+        return string(msg.Body), nil
     case common.PeerNotFound:
-        // If peer was not found, return an error. The puncher shuts down the
-        // connection itself, so no need to #handleError
         return "", fmt.Errorf("peer not found")
     default:
-        // If the packet was not recognized, return an error and shut down the
-        // connection.
-        return "", handleError(p.conn, out, false, "expected peer status, got 0x%x", msg.Packet)
+        return "", fmt.Errorf("expected peer status, got 0x%x", msg.Packet)
     }
-
-    return
 }
 
 func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {

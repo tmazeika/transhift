@@ -1,10 +1,9 @@
 package transhift
 
 import (
-    "bytes"
     "encoding/binary"
     "fmt"
-    "bufio"
+    "github.com/transhift/common/common"
 )
 
 const (
@@ -27,56 +26,63 @@ const (
     ChunkSize = 4096
 )
 
-func CheckCompatibility(inOut *bufio.ReadWriter) error {
-    if _, err := inOut.WriteString(Version); err != nil {
-        return err
+func CheckCompatibility(in common.In, out common.Out) error {
+    // Send version.
+    out <- common.Message{ common.Version, Version }
+    <- out.Done
+
+    if out.Err != nil {
+        return out.Err
     }
 
-    if _, err := inOut.WriteRune('\n'); err != nil {
-        return err
+    // Expect version.
+    msg, ok := in.Ch
+
+    if ! ok {
+        return in.Err
     }
 
-    if err := inOut.Flush(); err != nil {
-        return err
-    }
-
-    scanner := bufio.NewScanner(inOut.Reader)
-
-    if ! scanner.Scan() {
-        return scanner.Err()
-    }
-
-    remoteVersion := scanner.Text()
-    var localCompatible bool
-
-    for _, v := range compatibility[Version] {
-        if v == remoteVersion {
-            localCompatible = true
-            break
+    remoteVersion := string(msg.Body)
+    localCompatible := func() {
+        for _, v := range compatibility[Version] {
+            if v == remoteVersion {
+                return true
+            }
         }
+
+        return false
+    }()
+
+    // Send local compatibility status.
+    if localCompatible {
+        out.Ch <- common.Message{ common.Compatible, nil }
+    } else {
+        out.Ch <- common.Message{ common.Incompatible, nil }
     }
 
-    if err := inOut.WriteByte(boolToByte(localCompatible)); err != nil {
-        return err
+    <- out.Done
+
+    if out.Err != nil {
+        return out.Err
     }
 
-    if err := inOut.Flush(); err != nil {
-        return err
+    // Expect remote compatibility status.
+    msg, ok = <- in.Ch
+
+    if ! ok {
+        return in.Err
     }
 
-    scanner.Split(bufio.ScanBytes)
-
-    if ! scanner.Scan() {
-        return scanner.Err()
+    switch msg.Packet {
+    case common.Compatible:
+        return nil
+    case common.Incompatible:
+        if ! localCompatible {
+            return fmt.Errorf("incompatible versions %s and %s", Version, remoteVersion)
+        }
+    default:
+        return fmt.Errorf("expected compatibility status, got 0x%x", msg.Packet)
     }
-
-    remoteCompatible := byteToBool(scanner.Bytes()[0])
-
-    if ! localCompatible && ! remoteCompatible {
-        return fmt.Errorf("incompatible versions %s and %s", Version, remoteVersion)
-    }
-
-    return nil
 }
 
 func uint64Min(x, y uint64) uint64 {
