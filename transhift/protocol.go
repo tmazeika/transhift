@@ -26,20 +26,25 @@ const (
     ChunkSize = 4096
 )
 
-func CheckCompatibility(in common.In, out common.Out) error {
-    // Send version.
-    out <- common.Message{ common.Version, Version }
-    <- out.Done
+type InOut struct {
+    in  *common.In
+    out *common.Out
+}
 
-    if out.Err != nil {
-        return out.Err
+func CheckCompatibility(inOut *InOut) error {
+    // Send version.
+    inOut.out <- common.Message{ common.Version, Version }
+    <- inOut.out.Done
+
+    if inOut.out.Err != nil {
+        return inOut.out.Err
     }
 
     // Expect version.
-    msg, ok := in.Ch
+    msg, ok := inOut.in.Ch
 
     if ! ok {
-        return in.Err
+        return inOut.in.Err
     }
 
     remoteVersion := string(msg.Body)
@@ -55,22 +60,22 @@ func CheckCompatibility(in common.In, out common.Out) error {
 
     // Send local compatibility status.
     if localCompatible {
-        out.Ch <- common.Message{ common.Compatible, nil }
+        inOut.out.Ch <- common.Message{ common.Compatible, nil }
     } else {
-        out.Ch <- common.Message{ common.Incompatible, nil }
+        inOut.out.Ch <- common.Message{ common.Incompatible, nil }
     }
 
-    <- out.Done
+    <- inOut.out.Done
 
-    if out.Err != nil {
-        return out.Err
+    if inOut.out.Err != nil {
+        return inOut.out.Err
     }
 
     // Expect remote compatibility status.
-    msg, ok = <- in.Ch
+    msg, ok = <- inOut.in.Ch
 
     if ! ok {
-        return in.Err
+        return inOut.in.Err
     }
 
     switch msg.Packet {

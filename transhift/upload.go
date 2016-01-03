@@ -4,7 +4,6 @@ import (
     "github.com/codegangsta/cli"
     "path/filepath"
     "net"
-    "bufio"
     "fmt"
     "os"
     "crypto/tls"
@@ -24,58 +23,79 @@ func (u UploadArgs) AbsFilePath() string {
 }
 
 type DownloadPeer struct {
-    conn  *tls.Conn
+    InOut
+
+    conn *tls.Conn
+    addr string
 }
 
-func (p *DownloadPeer) ConnectToPuncher(cert tls.Certificate, host string, port string) (err error) {
+func (p *DownloadPeer) connectToPuncher(cert tls.Certificate, host string, port string) (err error) {
     p.conn, err = tls.Dial("tcp", net.JoinHostPort(host, port), &tls.Config{
         Certificates: []tls.Certificate{cert},
         InsecureSkipVerify: true,
         MinVersion: tls.VersionTLS12,
     })
 
+    p.in, p.out = common.MessageChannel(p.conn)
     return
 }
 
-func (p *DownloadPeer) PunchHole(uid string) (string, error) {
-    defer p.conn.Close()
+func (p *DownloadPeer) sendClientType() error {
+    p.out.Ch <- common.Message{ common.Uploader, nil }
+    <- p.out.Done
+    return p.out.Err
+}
 
-    in, out := common.MessageChannel(p.conn)
+func (p *DownloadPeer) sendUid(uid string) error {
+    p.out.Ch <- common.Message{ common.UidRequest, []byte(uid) }
+    <- p.out.Done
+    return p.out.Err
+}
 
-    // Send client type.
-    out.Ch <- common.Message{ common.Uploader, nil }
-    <- out.Done
-
-    if out.Err != nil {
-        return "", out.Err
-    }
-
-    // Send uid.
-    out <- common.Message{
-        Packet: common.UidRequest,
-        Body:   []byte(uid),
-    }
-    <- out.Done
-
-    if out.Err != nil {
-        return "", out.Err
-    }
-
-    // Wait for PeerReady (or PeerNotFound).
-    msg, ok := <- in.Ch
+func (p *DownloadPeer) receiveAddr() error {
+    msg, ok := <- p.in.Ch
 
     if ! ok {
-        return "", in.Err
+        return p.in.Err
     }
 
     switch msg.Packet {
     case common.PeerReady:
-        return string(msg.Body), nil
+        p.addr = string(msg.Body)
     case common.PeerNotFound:
-        return "", fmt.Errorf("peer not found")
+        return fmt.Errorf("peer not found")
     default:
-        return "", fmt.Errorf("expected peer status, got 0x%x", msg.Packet)
+        return fmt.Errorf("expected peer status, got 0x%x", msg.Packet)
     }
+
+    return nil
+}
+
+func (p *DownloadPeer) PunchHole(cert tls.Certificate, host, port, uid string) error {
+    err := p.connectToPuncher(cert, host, port)
+
+    if err != nil {
+        return  err
+    }
+
+    defer p.conn.Close()
+
+    // Send client type.
+    err = p.sendClientType()
+
+    if err != nil {
+        return err
+    }
+
+    // Send uid.
+    err = p.sendUid(uid)
+
+    if err != nil {
+        return err
+    }
+
+    // Expect peer address.
+    return p.receiveAddr()
 }
 
 func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
@@ -92,9 +112,7 @@ func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
         }
     }
 
-    p.inOut = bufio.NewReadWriter(bufio.NewReader(p.conn), bufio.NewWriter(p.conn))
-
-    return CheckCompatibility(p.inOut)
+    return CheckCompatibility(p)
 }
 
 func handleError(conn net.Conn, out chan common.Message, internal bool, format string, a ...interface{}) (err error) {
