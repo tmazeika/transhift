@@ -148,7 +148,7 @@ func Upload(c *cli.Context) {
         logAndExit(err)
     }
 
-    fmt.Print("Waiting for peer... ")
+    fmt.Print("Getting peer address... ")
 
     err = peer.ConnectToPuncher(cert, storage.Config["puncher_host"], storage.Config["puncher_port"])
 
@@ -163,7 +163,7 @@ func Upload(c *cli.Context) {
     }
 
     fmt.Println("done")
-    fmt.Printf("Connecting to '%s'... ", args.uid)
+    fmt.Printf("Connecting... ", args.uid)
 
     err = peer.Connect(cert, remoteAddr)
 
@@ -176,12 +176,11 @@ func Upload(c *cli.Context) {
     fmt.Println("done")
     fmt.Print("Sending file info... ")
 
-    msgCh := peer.ReceiveMessages()
+    in, out := common.MessageChannel(peer.conn)
     file, err := os.Open(args.filePath)
 
     if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        os.Exit(1)
+        logAndExit(err)
     }
 
     defer file.Close()
@@ -189,25 +188,31 @@ func Upload(c *cli.Context) {
     fileInfo, err := file.Stat()
 
     if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        os.Exit(1)
+        logAndExit(err)
     }
 
-    checksum, err := common.CalculateFileChecksum(file)
+    out <- common.Message{
+        Packet: common.FileName,
+        Body:   []byte(filepath.Base(file.Name())),
+    }
+
+    fileHash, err := common.CalculateFileChecksum(file)
 
     if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        os.Exit(1)
+        logAndExit(err)
     }
 
-    metaInfo := FileInfo{
-        name:     filepath.Base(file.Name()),
-        size:     uint64(fileInfo.Size()),
-        checksum: checksum,
+    out <- common.Message{
+        Packet: common.FileSize,
+        Body:   []byte{uint64(fileInfo.Size())},
     }
 
-    peer.SendFileInfo(metaInfo)
-    fmt.Println(metaInfo)
+    out <- common.Message{
+        Packet: common.FileHash,
+        Body:   fileHash,
+    }
+
+    fmt.Println("done")
     fmt.Printf("Uploading '%s'...\n", args.AbsFilePath())
 
     var bytesWritten uint64
