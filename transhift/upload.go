@@ -29,7 +29,7 @@ type DownloadPeer struct {
     inOut *bufio.ReadWriter
 }
 
-func (DownloadPeer) PunchHole(peerUid string, cert tls.Certificate, config common.Config) (remoteAddr string, err error) {
+func (DownloadPeer) PunchHole(uid string, cert tls.Certificate, config common.Config) (remoteAddr string, err error) {
     conn, err := tls.Dial("tcp", net.JoinHostPort(config["puncher_host"], config["puncher_port"]), &tls.Config{
         Certificates: []tls.Certificate{cert},
         InsecureSkipVerify: true,
@@ -42,72 +42,32 @@ func (DownloadPeer) PunchHole(peerUid string, cert tls.Certificate, config commo
 
     defer conn.Close()
 
-    var buffer bytes.Buffer
+    in, out := common.MessageChannel(conn)
 
-    if _, err := buffer.Write(common.Mtob(common.UploadClientType)); err != nil {
-        return "", err
+    // Send client type.
+    out <- common.NewMesssageWithByte(common.ClientType, common.UploaderClientType)
+
+    // Send uid.
+    out <- common.Message{
+        Packet: common.UidRequest,
+        Body:   []byte(uid),
     }
 
-    if _, err := buffer.WriteString(peerUid); err != nil {
-        return "", err
+    // Wait for PeerReady (or PeerNotFound).
+    msg, ok := <- in
+
+    if ! ok {
+        common.HandleError(conn, out, true, "closing connection")
+        return
     }
 
-    if _, err := conn.Write(buffer.Bytes()); err != nil {
-        return "", err
-    }
-
-    scanner := bufio.NewScanner(bufio.NewReader(conn))
-
-    scanner.Split(bufio.ScanBytes)
-
-    for {
-        if ! scanner.Scan() {
-            return "", scanner.Err()
-        }
-
-        puncherResponse := scanner.Bytes()[0]
-
-        switch common.ProtocolMessage(puncherResponse) {
-        case common.PuncherPing:
-            fmt.Println("<< PuncherPing")
-            // TODO: error check
-            conn.Write(common.Mtob(common.PuncherPong))
-            fmt.Println(">> PuncherPong")
-        case common.PuncherEndPing:
-            fmt.Println("<< PuncherEndPing")
-            break
-        default:
-            return "", fmt.Errorf("protocol error: expected one of valid responses, got 0x%X", puncherResponse)
-        }
-    }
-
-    scanner.Split(bufio.ScanLines)
-
-    if ! scanner.Scan() {
-        return "", scanner.Err()
-    }
-
-    remoteAddr = scanner.Text()
-
-    scanner.Split(bufio.ScanBytes)
-
-    for {
-        if ! scanner.Scan() {
-            return "", scanner.Err()
-        }
-
-        puncherResponse := scanner.Bytes()[0]
-
-        switch common.ProtocolMessage(puncherResponse) {
-        case common.PuncherReady:
-            fmt.Println("<< PuncherReady")
-            break
-        case common.PuncherNotReady:
-            fmt.Println("<< PuncherNotReady")
-            return "", fmt.Errorf("peer disconnected")
-        default:
-            return "", fmt.Errorf("protocol error: expected one of valid responses, got 0x%X", puncherResponse)
-        }
+    switch msg.Packet {
+    case common.PeerReady:
+        remoteAddr = string(msg.Body)
+    case common.PeerNotFound:
+        fmt.Fprintf(os.Stderr, "Peer not found")
+    default:
+        common.HandleError(conn, out, false, "expected peer ready or peer not found, got 0x%x", msg.Packet)
     }
 
     return
