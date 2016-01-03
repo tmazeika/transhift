@@ -28,20 +28,20 @@ type DownloadPeer struct {
     inOut *bufio.ReadWriter
 }
 
-func (DownloadPeer) PunchHole(uid string, cert tls.Certificate, config common.Config) (remoteAddr string, err error) {
-    conn, err := tls.Dial("tcp", net.JoinHostPort(config["puncher_host"], config["puncher_port"]), &tls.Config{
+func (p *DownloadPeer) ConnectToPuncher(cert tls.Certificate, host string, port string) (err error) {
+    p.conn, err = tls.Dial("tcp", net.JoinHostPort(host, port), &tls.Config{
         Certificates: []tls.Certificate{cert},
         InsecureSkipVerify: true,
         MinVersion: tls.VersionTLS12,
     })
 
-    if err != nil {
-        return "", err
-    }
+    return
+}
 
-    defer conn.Close()
+func (p *DownloadPeer) PunchHole(uid string) (remoteAddr string, err error) {
+    defer p.conn.Close()
 
-    in, out := common.MessageChannel(conn)
+    in, out := common.MessageChannel(p.conn)
 
     // Send client type.
     out <- common.NewMesssageWithByte(common.ClientType, common.UploaderClientType)
@@ -56,17 +56,22 @@ func (DownloadPeer) PunchHole(uid string, cert tls.Certificate, config common.Co
     msg, ok := <- in
 
     if ! ok {
-        handleError(conn, out, true, "closing connection")
-        return
+        // Some IO error occurred, so shut down the connection.
+        return "", handleError(p.conn, out, true, "closing connection")
     }
 
     switch msg.Packet {
     case common.PeerReady:
+        // If peer is ready, set the remote address.
         remoteAddr = string(msg.Body)
     case common.PeerNotFound:
-        fmt.Fprintf(os.Stderr, "Peer not found")
+        // If peer was not found, return an error. The puncher shuts down the
+        // connection itself, so no need to #handleError
+        return "", fmt.Errorf("peer not found")
     default:
-        handleError(conn, out, false, "expected peer status, got 0x%x", msg.Packet)
+        // If the packet was not recognized, return an error and shut down the
+        // connection.
+        return "", handleError(p.conn, out, false, "expected peer status, got 0x%x", msg.Packet)
     }
 
     return
@@ -91,9 +96,9 @@ func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
     return CheckCompatibility(p.inOut)
 }
 
-func handleError(conn net.Conn, out chan common.Message, internal bool, format string, a ...interface{}) {
+func handleError(conn net.Conn, out chan common.Message, internal bool, format string, a ...interface{}) (err error) {
     var packet common.Packet
-    msg := fmt.Sprintf(format, a)
+    err = fmt.Errorf(format, a)
 
     if internal {
         packet = common.InternalError
@@ -101,12 +106,12 @@ func handleError(conn net.Conn, out chan common.Message, internal bool, format s
         packet = common.ProtocolError
     }
 
-    fmt.Fprintln(os.Stderr, msg)
-
     out <- common.Message{
         Packet: packet,
-        Body:   []byte(msg),
+        Body:   []byte(err),
     }
+
+    return
 }
 
 func Upload(c *cli.Context) {
