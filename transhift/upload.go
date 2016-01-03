@@ -8,7 +8,6 @@ import (
     "fmt"
     "os"
     "crypto/tls"
-    "bytes"
     "time"
     "github.com/transhift/common/common"
 )
@@ -67,7 +66,7 @@ func (DownloadPeer) PunchHole(uid string, cert tls.Certificate, config common.Co
     case common.PeerNotFound:
         fmt.Fprintf(os.Stderr, "Peer not found")
     default:
-        handleError(conn, out, false, "expected peer ready or peer not found, got 0x%x", msg.Packet)
+        handleError(conn, out, false, "expected peer status, got 0x%x", msg.Packet)
     }
 
     return
