@@ -92,35 +92,6 @@ func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
     return CheckCompatibility(p.inOut)
 }
 
-func (p DownloadPeer) SendFileInfo(fileInfo FileInfo) error {
-    data, err := fileInfo.MarshalBinary()
-
-    if err != nil {
-        return err
-    }
-
-    if _, err := p.conn.Write(data); err != nil {
-        return err
-    }
-
-    return nil
-}
-
-func (p DownloadPeer) ReceiveMessages() (ch chan common.ProtocolMessage) {
-    ch = make(chan common.ProtocolMessage)
-    scanner := bufio.NewScanner(p.inOut.Reader)
-
-    scanner.Split(bufio.ScanBytes)
-
-    go func() {
-        for scanner.Scan() {
-            ch <- common.ProtocolMessage(scanner.Bytes()[0])
-        }
-    }()
-
-    return
-}
-
 func Upload(c *cli.Context) {
     args := UploadArgs{
         peerUid:  c.Args()[0],
