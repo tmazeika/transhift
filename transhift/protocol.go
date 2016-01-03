@@ -91,6 +91,13 @@ func CheckCompatibility(inOut *InOut) error {
     return nil
 }
 
+func ClosePeer(inOut *InOut, err error) {
+    inOut.out.Ch <- common.Message{
+        Packet: common.Error,
+        Body:   []byte(err.Error()),
+    }
+}
+
 func uint64Min(x, y uint64) uint64 {
     if x < y {
         return x

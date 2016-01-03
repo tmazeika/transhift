@@ -130,24 +130,6 @@ func (p *DownloadPeer) Connect() error {
     return CheckCompatibility(p)
 }
 
-func handleError(conn net.Conn, out chan common.Message, internal bool, format string, a ...interface{}) (err error) {
-    var packet common.Packet
-    err = fmt.Errorf(format, a)
-
-    if internal {
-        packet = common.InternalError
-    } else {
-        packet = common.ProtocolError
-    }
-
-    out <- common.Message{
-        Packet: packet,
-        Body:   []byte(err),
-    }
-
-    return
-}
-
 func Upload(c *cli.Context) {
     args := UploadArgs{
         uid:      c.Args()[0],
@@ -185,6 +167,7 @@ func Upload(c *cli.Context) {
     err = peer.PunchHole(storage.Config["puncher_host"], storage.Config["puncher_port"], args.uid)
 
     if err != nil {
+        ClosePeer(peer, err)
         common.LogAndExit(err)
     }
 
@@ -194,6 +177,7 @@ func Upload(c *cli.Context) {
     err = peer.Connect()
 
     if err != nil {
+        ClosePeer(peer, err)
         common.LogAndExit(err)
     }
 
