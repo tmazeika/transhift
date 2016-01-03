@@ -99,18 +99,32 @@ func (p *DownloadPeer) PunchHole(host, port, uid string) error {
     return p.receiveAddr()
 }
 
-func (p *DownloadPeer) Connect(cert tls.Certificate, remoteAddr string) error {
-    for p.conn == nil {
-        var err error
-        p.conn, err = tls.Dial("tcp", remoteAddr, &tls.Config{
-            Certificates: []tls.Certificate{cert},
+func (p *DownloadPeer) connectToPeer() error {
+    // TODO: timeout
+
+    for {
+        conn, err := tls.Dial("tcp", p.addr, &tls.Config{
+            Certificates: []tls.Certificate{p.cert},
             InsecureSkipVerify: true,
             MinVersion: tls.VersionTLS12,
         })
 
         if err != nil {
             time.Sleep(time.Second)
+        } else {
+            p.conn = conn
+            break
         }
+    }
+
+    return nil
+}
+
+func (p *DownloadPeer) Connect() error {
+    err := p.connectToPeer()
+
+    if err != nil {
+        return err
     }
 
     return CheckCompatibility(p)
@@ -177,10 +191,10 @@ func Upload(c *cli.Context) {
     fmt.Println("done")
     fmt.Print("Connecting... ")
 
-    err = peer.Connect(cert, remoteAddr)
+    err = peer.Connect()
 
     if err != nil {
-        logAndExit(err)
+        common.LogAndExit(err)
     }
 
     defer peer.conn.Close()
