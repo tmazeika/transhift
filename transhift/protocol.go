@@ -92,24 +92,6 @@ func CheckCompatibility(inOut *InOut) error {
     return nil
 }
 
-func HandleError(inOut *InOut, localErr error, remoteErr error) {
-    remoteBody := func() {
-        if remoteErr == nil {
-            return []byte{0x00}
-        } else {
-            return []byte(remoteErr.Error())
-        }
-    }()
-
-    inOut.out.Ch <- common.Message{
-        Packet: common.Error,
-        Body:   remoteBody,
-    }
-
-    fmt.Fprintln(os.Stderr, localErr)
-    os.Exit(1)
-}
-
 func uint64Min(x, y uint64) uint64 {
     if x < y {
         return x

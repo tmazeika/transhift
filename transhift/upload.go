@@ -150,13 +150,15 @@ func Upload(c *cli.Context) {
     err := storage.LoadConfig()
 
     if err != nil {
-        common.LogAndExit(err)
+        fmt.Fprintln(os.Stderr, err)
+        return
     }
 
     cert, err := storage.Certificate(CertFileName, KeyFileName)
 
     if err != nil {
-        common.LogAndExit(err)
+        fmt.Fprintln(os.Stderr, err)
+        return
     }
 
     peer := &DownloadPeer{
@@ -168,7 +170,8 @@ func Upload(c *cli.Context) {
     err = peer.PunchHole(storage.Config["puncher_host"], storage.Config["puncher_port"], args.uid)
 
     if err != nil {
-        HandleError(peer, err)
+        fmt.Fprintln(os.Stderr, err)
+        return
     }
 
     fmt.Println("done")
@@ -177,7 +180,8 @@ func Upload(c *cli.Context) {
     err = peer.Connect()
 
     if err != nil {
-        HandleError(peer, err)
+        fmt.Fprintln(os.Stderr, err)
+        return
     }
 
     defer peer.conn.Close()
@@ -188,8 +192,8 @@ func Upload(c *cli.Context) {
     file, err := os.Open(args.filePath)
 
     if err != nil {
-        HandleError(peer, nil)
-        common.LogAndExit(err)
+        fmt.Fprintln(os.Stderr, err)
+        return
     }
 
     defer file.Close()
@@ -197,7 +201,8 @@ func Upload(c *cli.Context) {
     fileInfo, err := file.Stat()
 
     if err != nil {
-        logAndExit(err)
+        fmt.Fprintln(os.Stderr, err)
+        return
     }
 
     out <- common.Message{
