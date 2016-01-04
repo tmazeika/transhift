@@ -4,7 +4,6 @@ import (
     "encoding/binary"
     "fmt"
     "github.com/transhift/common/common"
-    "os"
 )
 
 const (

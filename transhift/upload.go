@@ -239,7 +239,7 @@ func Upload(c *cli.Context) {
         return
     }
 
-    fileHash, err := common.CalculateFileChecksum(file)
+    fileHash, err := common.CalculateFileHash(file)
 
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
