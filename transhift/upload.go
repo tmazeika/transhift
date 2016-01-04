@@ -9,7 +9,6 @@ import (
     "crypto/tls"
     "time"
     "github.com/transhift/common/common"
-    "errors"
 )
 
 type UploadArgs struct {
