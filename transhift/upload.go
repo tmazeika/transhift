@@ -131,6 +131,36 @@ func (p *DownloadPeer) Connect() error {
     return CheckCompatibility(p)
 }
 
+func (p *DownloadPeer) SendFileInfo(fileInfo os.FileInfo, hash string) error {
+    p.out.Ch <- common.Message{
+        Packet: common.FileName,
+        Body:   []byte(filepath.Base(fileInfo.Name())),
+    }
+    <- p.out.Done
+
+    if p.out.Err != nil {
+        return p.out.Err
+    }
+
+    p.out.Ch <- common.Message{
+        Packet: common.FileSize,
+        Body:   []byte(uint64ToBytes(uint64(fileInfo.Size()))),
+    }
+    <- p.out.Done
+
+    if p.out.Err != nil {
+        return p.out.Err
+    }
+
+    p.out.Ch <- common.Message{
+        Packet: common.FileHash,
+        Body:   []byte(hash),
+    }
+    <- p.out.Done
+
+    return p.out.Err
+}
+
 func Upload(c *cli.Context) {
     args := UploadArgs{
         uid:      c.Args()[0],
@@ -205,32 +235,22 @@ func Upload(c *cli.Context) {
         return
     }
 
-    out <- common.Message{
-        Packet: common.FileName,
-        Body:   []byte(filepath.Base(file.Name())),
-    }
-
     fileHash, err := common.CalculateFileChecksum(file)
 
     if err != nil {
-        logAndExit(err)
+        fmt.Fprintln(os.Stderr, err)
+        return
     }
 
-    out <- common.Message{
-        Packet: common.FileSize,
-        Body:   []byte{uint64(fileInfo.Size())},
-    }
+    err = peer.SendFileInfo(fileInfo, fileHash)
 
-    out <- common.Message{
-        Packet: common.FileHash,
-        Body:   fileHash,
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        return
     }
 
     fmt.Println("done")
     fmt.Printf("Uploading '%s'...\n", args.AbsFilePath())
-
-    // TODO: remove (placeholder)
-    <- in
 
     // TODO: redo
     /*var bytesWritten uint64
