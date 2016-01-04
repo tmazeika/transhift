@@ -23,7 +23,7 @@ func (u UploadArgs) AbsFilePath() string {
 }
 
 type DownloadPeer struct {
-    *InOut
+    InOut
 
     cert tls.Certificate
     conn *tls.Conn
@@ -135,7 +135,7 @@ func (p *DownloadPeer) Connect() error {
         return err
     }
 
-    return CheckCompatibility(p.InOut)
+    return CheckCompatibility(&p.InOut)
 }
 
 func (p *DownloadPeer) SendFileInfo(fileInfo os.FileInfo, hash []byte) error {
