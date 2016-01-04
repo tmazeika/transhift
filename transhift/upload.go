@@ -254,7 +254,7 @@ func Upload(c *cli.Context) {
     }
 
     fmt.Println("done")
-    fmt.Printf("Uploading '%s'...\n", args.AbsFilePath())
+    fmt.Printf("Uploading %s ...\n", args.AbsFilePath())
 
     // TODO: redo
     /*var bytesWritten uint64
