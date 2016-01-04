@@ -9,6 +9,7 @@ import (
     "crypto/tls"
     "time"
     "github.com/transhift/common/common"
+    "errors"
 )
 
 type UploadArgs struct {
@@ -167,8 +168,7 @@ func Upload(c *cli.Context) {
     err = peer.PunchHole(storage.Config["puncher_host"], storage.Config["puncher_port"], args.uid)
 
     if err != nil {
-        ClosePeer(peer, err)
-        common.LogAndExit(err)
+        HandleError(peer, err)
     }
 
     fmt.Println("done")
@@ -177,8 +177,7 @@ func Upload(c *cli.Context) {
     err = peer.Connect()
 
     if err != nil {
-        ClosePeer(peer, err)
-        common.LogAndExit(err)
+        HandleError(peer, err)
     }
 
     defer peer.conn.Close()
@@ -186,11 +185,11 @@ func Upload(c *cli.Context) {
     fmt.Println("done")
     fmt.Print("Sending file info... ")
 
-    in, out := common.MessageChannel(peer.conn)
     file, err := os.Open(args.filePath)
 
     if err != nil {
-        logAndExit(err)
+        HandleError(peer, nil)
+        common.LogAndExit(err)
     }
 
     defer file.Close()

@@ -4,6 +4,7 @@ import (
     "encoding/binary"
     "fmt"
     "github.com/transhift/common/common"
+    "os"
 )
 
 const (
@@ -91,11 +92,22 @@ func CheckCompatibility(inOut *InOut) error {
     return nil
 }
 
-func ClosePeer(inOut *InOut, err error) {
+func HandleError(inOut *InOut, localErr error, remoteErr error) {
+    remoteBody := func() {
+        if remoteErr == nil {
+            return []byte{0x00}
+        } else {
+            return []byte(remoteErr.Error())
+        }
+    }()
+
     inOut.out.Ch <- common.Message{
         Packet: common.Error,
-        Body:   []byte(err.Error()),
+        Body:   remoteBody,
     }
+
+    fmt.Fprintln(os.Stderr, localErr)
+    os.Exit(1)
 }
 
 func uint64Min(x, y uint64) uint64 {
