@@ -2,16 +2,16 @@ package transhift
 
 import (
     "github.com/codegangsta/cli"
-    "github.com/transhift/common/common"
-    "net"
-    "bufio"
-    "bytes"
-    "fmt"
-    "os"
-    "crypto/tls"
+//    "github.com/transhift/common/common"
+//    "net"
+//    "bufio"
+//    "bytes"
+//    "fmt"
+//    "os"
+//    "crypto/tls"
 )
 
-type DownloadArgs struct {
+/*type DownloadArgs struct {
     destination string
     appDir      string
 }
@@ -141,10 +141,10 @@ func (p UploadPeer) ReceiveChunks() (ch chan []byte) {
     }()
 
     return
-}
+}*/
 
 func Download(c *cli.Context) {
-    args := DownloadArgs{
+    /*args := DownloadArgs{
         destination: c.String("destination"),
         appDir:      c.GlobalString("app-dir"),
     }
@@ -243,5 +243,5 @@ func Download(c *cli.Context) {
         peer.SendMessage(common.ChecksumMismatch)
         fmt.Fprintln(os.Stderr, "checksum mismatch")
         os.Exit(1)
-    }
+    }*/
 }
