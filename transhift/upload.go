@@ -100,9 +100,14 @@ func (p *DownloadPeer) PunchHole(host, port, uid string) error {
 }
 
 func (p *DownloadPeer) connectToPeer() error {
-    // TODO: timeout
+    var timedOut bool
 
-    for {
+    go func() {
+        <- time.After(time.Second * 30)
+        timedOut = true
+    }()
+
+    for ! timedOut {
         conn, err := tls.Dial("tcp", p.addr, &tls.Config{
             Certificates: []tls.Certificate{p.cert},
             InsecureSkipVerify: true,
@@ -113,11 +118,11 @@ func (p *DownloadPeer) connectToPeer() error {
             time.Sleep(time.Second)
         } else {
             p.conn = conn
-            break
+            return nil
         }
     }
 
-    return nil
+    return fmt.Errorf("timed out")
 }
 
 func (p *DownloadPeer) Connect() error {
