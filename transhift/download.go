@@ -143,10 +143,6 @@ func (p UploadPeer) ReceiveChunks() (ch chan []byte) {
     return
 }
 
-func (p UploadPeer) SendMessage(msg common.ProtocolMessage) {
-    p.conn.Write(common.Mtob(msg))
-}
-
 func Download(c *cli.Context) {
     args := DownloadArgs{
         destination: c.String("destination"),

@@ -104,19 +104,3 @@ func uint64ToBytes(i uint64) (b []byte) {
     binary.BigEndian.PutUint64(b, i)
     return
 }
-
-func bytesToUint64(b []byte) uint64 {
-    return binary.BigEndian.Uint64(b)
-}
-
-func boolToByte(b bool) byte {
-    if b {
-        return 0x01
-    }
-
-    return 0x00
-}
-
-func byteToBool(b byte) bool {
-    return b != 0x00
-}
