@@ -33,7 +33,7 @@ type InOut struct {
 
 func CheckCompatibility(inOut *InOut) error {
     // Send version.
-    inOut.out <- common.Message{ common.Version, Version }
+    inOut.out.Ch <- common.Message{ common.Version, []byte(Version) }
     <- inOut.out.Done
 
     if inOut.out.Err != nil {
@@ -41,14 +41,14 @@ func CheckCompatibility(inOut *InOut) error {
     }
 
     // Expect version.
-    msg, ok := inOut.in.Ch
+    msg, ok := <- inOut.in.Ch
 
     if ! ok {
         return inOut.in.Err
     }
 
     remoteVersion := string(msg.Body)
-    localCompatible := func() {
+    localCompatible := func() bool {
         for _, v := range compatibility[Version] {
             if v == remoteVersion {
                 return true

@@ -23,9 +23,9 @@ func (u UploadArgs) AbsFilePath() string {
 }
 
 type DownloadPeer struct {
-    InOut
+    *InOut
 
-    cert *tls.Certificate
+    cert tls.Certificate
     conn *tls.Conn
     addr string
 }
@@ -37,7 +37,10 @@ func (p *DownloadPeer) connectToPuncher(host string, port string) (err error) {
         MinVersion: tls.VersionTLS12,
     })
 
-    p.in, p.out = common.MessageChannel(p.conn)
+    if err == nil {
+        p.in, p.out = common.MessageChannel(p.conn)
+    }
+
     return
 }
 
@@ -132,10 +135,10 @@ func (p *DownloadPeer) Connect() error {
         return err
     }
 
-    return CheckCompatibility(p)
+    return CheckCompatibility(p.InOut)
 }
 
-func (p *DownloadPeer) SendFileInfo(fileInfo os.FileInfo, hash string) error {
+func (p *DownloadPeer) SendFileInfo(fileInfo os.FileInfo, hash []byte) error {
     p.out.Ch <- common.Message{
         Packet: common.FileName,
         Body:   []byte(filepath.Base(fileInfo.Name())),
@@ -148,7 +151,7 @@ func (p *DownloadPeer) SendFileInfo(fileInfo os.FileInfo, hash string) error {
 
     p.out.Ch <- common.Message{
         Packet: common.FileSize,
-        Body:   []byte(uint64ToBytes(uint64(fileInfo.Size()))),
+        Body:   uint64ToBytes(uint64(fileInfo.Size())),
     }
     <- p.out.Done
 
