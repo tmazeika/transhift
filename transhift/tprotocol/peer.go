@@ -4,11 +4,14 @@ import (
 	"net"
 	"crypto/tls"
 	"time"
+	"encoding/gob"
 )
 
 type peer struct {
 	net.Conn
 
+	Enc   *gob.Encoder
+	Dec   *gob.Decoder
 	cert  *tls.Certificate
 	raddr string
 }
@@ -40,6 +43,10 @@ func (p *peer) Connect() error {
 			break
 		}
 	}
+
+	p.Enc = gob.NewEncoder(p.Conn)
+	p.Dec = gob.NewDecoder(p.Conn)
+	return nil
 }
 
 func ticker(done <-chan struct{}) <-chan struct{} {
