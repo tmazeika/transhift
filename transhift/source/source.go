@@ -89,6 +89,8 @@ func Start(c *cli.Context) {
 
     log.Println("done")
 
+    log.Print("Connecting... ")
+
 ////////////////////////////////////////////////////////////////////////////////
 
     fmt.Print("Getting peer address... ")

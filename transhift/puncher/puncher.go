@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/gob"
 	"github.com/transhift/transhift/common/protocol"
+	"github.com/transhift/transhift/transhift/tprotocol"
 )
 
 type puncher struct {
@@ -28,7 +29,7 @@ func New(host, port string, nodeType protocol.NodeType, cert *tls.Certificate) *
 }
 
 func (p *puncher) Connect() (err error) {
-	if p.Conn, err = tls.Dial("tcp", net.JoinHostPort(p.host, p.port), p.tlsConfig()); err != nil {
+	if p.Conn, err = tls.Dial("tcp", net.JoinHostPort(p.host, p.port), tprotocol.TlsConfig(p.cert)); err != nil {
 		return
 	}
 
@@ -46,12 +47,3 @@ func (p *puncher) Enc() *gob.Encoder {
 func (p *puncher) Dec() *gob.Decoder {
 	return p.dec
 }
-
-func (p *puncher) tlsConfig() *tls.Config {
-	return &tls.Config{
-		Certificates:       []tls.Certificate{*p.cert},
-		InsecureSkipVerify: true,
-		MinVersion:         tls.VersionTLS12,
-	}
-}
-
