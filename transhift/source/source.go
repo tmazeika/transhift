@@ -9,6 +9,9 @@ import (
     "crypto/tls"
     "time"
     "github.com/transhift/common/common"
+    "github.com/transhift/transhift/common/storage"
+    "log"
+    "github.com/transhift/transhift/transhift/tstorage"
 )
 
 type UploadArgs struct {
@@ -168,39 +171,52 @@ func (p *DownloadPeer) SendFileInfo(fileInfo os.FileInfo, hash []byte) error {
     return p.out.Err
 }
 
+type args struct {
+    id       string
+    filePath string
+    appDir   string
+}
+
 func Start(c *cli.Context) {
-    args := UploadArgs{
-        uid:      c.Args()[0],
+    log.SetOutput(os.Stdout)
+    log.SetFlags(0)
+
+    a := args{
+        id:       c.Args()[0],
         filePath: c.Args()[1],
         appDir:   c.GlobalString("app-dir"),
     }
 
-    storage := &common.Storage{
-        CustomDir: args.appDir,
-
-        // This is the default config. If it already exists, this means nothing.
-        Config: common.Config{
-            "puncher_host": "104.236.76.95",
-            "puncher_port": "50977",
-        },
-    }
-    err := storage.LoadConfig()
-
+    s, err := tstorage.Prepare(a.appDir)
     if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        return
+        log.SetOutput(os.Stderr)
+        log.Fatalln("Error:", err)
     }
 
-    cert, err := storage.Certificate(CertFileName, KeyFileName)
-
+    conf, err := s.Config().(tstorage.Config)
     if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        return
+        log.SetOutput(os.Stderr)
+        log.Fatalln("Error:", err)
     }
 
-    peer := &DownloadPeer{
-        cert: cert,
+    cert, err := s.Certificate(tstorage.KeyFileName, tstorage.CertFileName)
+    if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Fatalln("Error:", err)
     }
+
+    log.Print("Getting peer address... ")
+
+    // Punch TCP hole.
+    targetAddr, err := punchHole(conf.Puncher["host"], conf.Puncher["port"], cert, a.id)
+    if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Fatalln("error:", err)
+    }
+
+    log.Println("done")
+
+////////////////////////////////////////////////////////////////////////////////
 
     fmt.Print("Getting peer address... ")
 
