@@ -7,6 +7,14 @@ import (
 	"github.com/transhift/transhift/common/protocol"
 )
 
+type Puncher interface {
+	Connect() error
+
+	Enc() *gob.Encoder
+
+	Dec() *gob.Decoder
+}
+
 type puncher struct {
 	net.Conn
 
@@ -37,6 +45,14 @@ func (p *puncher) Connect() (err error) {
 
 	// Send NodeType.
 	return p.enc.Encode(p.nodeType)
+}
+
+func (p *puncher) Enc() *gob.Encoder {
+	return p.enc
+}
+
+func (p *puncher) Dec() *gob.Decoder {
+	return p.dec
 }
 
 func (p *puncher) tlsConfig() *tls.Config {

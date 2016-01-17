@@ -1,4 +1,4 @@
-package upload
+package source
 
 import (
     "github.com/codegangsta/cli"
