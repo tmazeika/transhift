@@ -100,6 +100,15 @@ func Start(c *cli.Context) {
     defer peer.Close()
 
     log.Println("done")
+    log.Println("Sending file info...")
+
+    file, info, err := getFile(args.filePath)
+    if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Fatalln("error:", err)
+    }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
