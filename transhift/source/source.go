@@ -79,36 +79,10 @@ func Start(c *cli.Context) {
         log.Fatalln("Error:", err)
     }
 
-    log.Print("Getting peer address... ")
-
-    // Punch TCP hole.
-    targetAddr, err := punchHole(conf.Puncher["host"], conf.Puncher["port"], cert, a.id)
-    if err != nil {
+    if err := run(a, conf, cert); err != nil {
         log.SetOutput(os.Stderr)
         log.Fatalln("error:", err)
     }
-
-    log.Println("done")
-    log.Print("Connecting... ")
-
-    // Connect to peer.
-    peer := tprotocol.NewPeer(targetAddr)
-    if err := peer.Connect(); err != nil {
-        log.SetOutput(os.Stderr)
-        log.Fatalln("error:", err)
-    }
-    defer peer.Close()
-
-    log.Println("done")
-    log.Println("Sending file info...")
-
-    file, info, err := getFile(args.filePath)
-    if err != nil {
-        log.SetOutput(os.Stderr)
-        log.Fatalln("error:", err)
-    }
-
-    // Send file info.
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -180,4 +154,40 @@ func Start(c *cli.Context) {
         fmt.Fprintln(os.Stderr, "protocol error")
         os.Exit(1)
     }*/
+}
+
+func run(a args, conf *tstorage.Config, cert *tls.Certificate) error {
+    log.Print("Getting peer address... ")
+
+    // Punch TCP hole.
+    targetAddr, err := punchHole(conf.Puncher["host"], conf.Puncher["port"], cert, a.id)
+    if err != nil {
+        return err
+    }
+
+    log.Println("done")
+    log.Print("Connecting... ")
+
+    // Connect to peer.
+    peer := tprotocol.NewPeer(targetAddr)
+    if err := peer.Connect(); err != nil {
+        return err
+    }
+    defer peer.Close()
+
+    log.Println("done")
+    log.Print("Sending file info... ")
+
+    file, info, err := getFile(args.filePath)
+    if err != nil {
+        return err
+    }
+    defer file.Close()
+
+    // Send file info.
+    if err := peer.Enc.Encode(info); err != nil {
+        return err
+    }
+
+    log.Println("done")
 }
