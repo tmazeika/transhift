@@ -13,7 +13,3 @@ type sourcePuncher struct {
 func NewPuncher(host, port string, cert *tls.Certificate) *sourcePuncher {
 	return puncher.New(host, port, protocol.SourceNode, cert)
 }
-
-func (p *sourcePuncher) sendId(id string) error {
-	return p.Enc().Encode(id)
-}
