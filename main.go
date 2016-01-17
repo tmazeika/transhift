@@ -9,11 +9,9 @@ import (
 
 func main() {
     app := cli.NewApp()
-
     app.Name = "Transhift"
     app.Usage = "Peer-to-peer file transfers"
     app.Version = "0.1.0"
-
     app.Flags = []cli.Flag{
         cli.StringFlag{
             Name: "app-dir",
@@ -21,7 +19,6 @@ func main() {
             Usage: "application directory",
         },
     }
-
     app.Commands = []cli.Command{
         {
             Name: "download",
@@ -44,6 +41,5 @@ func main() {
             Action: source.Start,
         },
     }
-
     app.Run(os.Args)
 }
