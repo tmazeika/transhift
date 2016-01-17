@@ -12,6 +12,7 @@ import (
     "github.com/transhift/transhift/common/storage"
     "log"
     "github.com/transhift/transhift/transhift/tstorage"
+    "github.com/transhift/transhift/transhift/tprotocol"
 )
 
 func (p *DownloadPeer) SendFileInfo(fileInfo os.FileInfo, hash []byte) error {
@@ -88,29 +89,19 @@ func Start(c *cli.Context) {
     }
 
     log.Println("done")
-
     log.Print("Connecting... ")
 
+    // Connect to peer.
+    peer := tprotocol.NewPeer(targetAddr)
+    if err := peer.Connect(); err != nil {
+        log.SetOutput(os.Stderr)
+        log.Fatalln("error:", err)
+    }
+    defer peer.Close()
+
+    log.Println("done")
+
 ////////////////////////////////////////////////////////////////////////////////
-
-    fmt.Print("Getting peer address... ")
-
-    err = peer.PunchHole(storage.Config["puncher_host"], storage.Config["puncher_port"], args.uid)
-
-    if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        return
-    }
-
-    fmt.Println("done")
-    fmt.Print("Connecting... ")
-
-    err = peer.Connect()
-
-    if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        return
-    }
 
     defer peer.conn.Close()
 
