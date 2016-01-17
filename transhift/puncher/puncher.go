@@ -7,14 +7,6 @@ import (
 	"github.com/transhift/transhift/common/protocol"
 )
 
-type Puncher interface {
-	Connect() error
-
-	Enc() *gob.Encoder
-
-	Dec() *gob.Decoder
-}
-
 type puncher struct {
 	net.Conn
 
