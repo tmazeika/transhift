@@ -1,4 +1,4 @@
-package transhift
+package config
 
 const (
     CertFileName = "cert.pem"

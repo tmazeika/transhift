@@ -1,4 +1,4 @@
-package transhift
+package progress
 
 import (
     "bytes"

@@ -1,4 +1,4 @@
-package transhift
+package protocol
 
 import (
     "encoding/binary"

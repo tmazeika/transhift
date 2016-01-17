@@ -1,4 +1,4 @@
-package transhift
+package upload
 
 import (
     "github.com/codegangsta/cli"
