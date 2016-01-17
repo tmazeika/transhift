@@ -4,23 +4,26 @@ import (
 	"net"
 	"crypto/tls"
 	"encoding/gob"
+	"github.com/transhift/transhift/common/protocol"
 )
 
 type puncher struct {
 	net.Conn
 
-	host string
-	port string
-	cert *tls.Certificate
-	enc  *gob.Encoder
-	dec  *gob.Decoder
+	host     string
+	port     string
+	nodeType protocol.NodeType
+	cert     *tls.Certificate
+	enc      *gob.Encoder
+	dec      *gob.Decoder
 }
 
-func New(host, port string, cert *tls.Certificate) *puncher {
+func New(host, port string, nodeType protocol.NodeType, cert *tls.Certificate) *puncher {
 	return &puncher{
-		host: host,
-		port: port,
-		cert: cert,
+		host:     host,
+		port:     port,
+		nodeType: nodeType,
+		cert:     cert,
 	}
 }
 
@@ -31,7 +34,9 @@ func (p *puncher) Connect() (err error) {
 
 	p.enc = gob.NewEncoder(p.Conn)
 	p.dec = gob.NewDecoder(p.Conn)
-	return
+
+	// Send NodeType.
+	return p.enc.Encode(p.nodeType)
 }
 
 func (p *puncher) tlsConfig() *tls.Config {
