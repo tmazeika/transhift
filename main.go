@@ -23,7 +23,7 @@ func main() {
         {
             Name: "download",
             Aliases: []string{"dl"},
-            Usage: "download from a peer",
+            Usage: "Download from a peer",
             Action: target.Start,
             Flags: []cli.Flag{
                 cli.StringFlag{
