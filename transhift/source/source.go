@@ -168,7 +168,7 @@ func (p *DownloadPeer) SendFileInfo(fileInfo os.FileInfo, hash []byte) error {
     return p.out.Err
 }
 
-func Upload(c *cli.Context) {
+func Start(c *cli.Context) {
     args := UploadArgs{
         uid:      c.Args()[0],
         filePath: c.Args()[1],

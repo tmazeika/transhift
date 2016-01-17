@@ -1,8 +1,9 @@
 package main
 
 import (
-    "github.com/transhift/transhift/transhift"
     "github.com/codegangsta/cli"
+    "github.com/transhift/transhift/transhift/source"
+    "github.com/transhift/transhift/transhift/target"
     "os"
 )
 
@@ -26,7 +27,7 @@ func main() {
             Name: "download",
             Aliases: []string{"dl"},
             Usage: "download from a peer",
-            Action: transhift.Download,
+            Action: target.Start,
             Flags: []cli.Flag{
                 cli.StringFlag{
                     Name: "destination, d",
@@ -40,7 +41,7 @@ func main() {
             Aliases: []string{"ul"},
             Usage: "Upload to a peer",
             ArgsUsage: "<peer> <file>",
-            Action: transhift.Upload,
+            Action: source.Start,
         },
     }
 

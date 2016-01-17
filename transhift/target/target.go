@@ -1,4 +1,4 @@
-package download
+package target
 
 import (
     "github.com/codegangsta/cli"
@@ -143,7 +143,7 @@ func (p UploadPeer) ReceiveChunks() (ch chan []byte) {
     return
 }*/
 
-func Download(c *cli.Context) {
+func Start(c *cli.Context) {
     /*args := DownloadArgs{
         destination: c.String("destination"),
         appDir:      c.GlobalString("app-dir"),
