@@ -1,9 +1,9 @@
 package tprotocol
 
+/*
 import (
     "encoding/binary"
     "fmt"
-    "github.com/transhift/common/common"
 )
 
 const (
@@ -104,3 +104,4 @@ func uint64ToBytes(i uint64) (b []byte) {
     binary.BigEndian.PutUint64(b, i)
     return
 }
+*/
