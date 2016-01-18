@@ -7,7 +7,6 @@ import (
 	"github.com/transhift/transhift/common/protocol"
 	"github.com/transhift/transhift/transhift/tprotocol"
 	"strconv"
-	"syscall"
 )
 
 type puncher struct {
