@@ -6,20 +6,21 @@ import (
 	"encoding/gob"
 	"github.com/transhift/transhift/common/protocol"
 	"github.com/transhift/transhift/transhift/tprotocol"
+	"strconv"
 )
 
 type puncher struct {
 	net.Conn
 
 	host     string
-	port     string
+	port     int
 	nodeType protocol.NodeType
-	cert     *tls.Certificate
+	cert     tls.Certificate
 	enc      *gob.Encoder
 	dec      *gob.Decoder
 }
 
-func New(host, port string, nodeType protocol.NodeType, cert *tls.Certificate) *puncher {
+func New(host string, port int, nodeType protocol.NodeType, cert tls.Certificate) *puncher {
 	return &puncher{
 		host:     host,
 		port:     port,
@@ -29,7 +30,7 @@ func New(host, port string, nodeType protocol.NodeType, cert *tls.Certificate) *
 }
 
 func (p *puncher) Connect() (err error) {
-	if p.Conn, err = tls.Dial("tcp", net.JoinHostPort(p.host, p.port), tprotocol.TlsConfig(p.cert)); err != nil {
+	if p.Conn, err = tls.Dial("tcp", net.JoinHostPort(p.host, strconv.Itoa(p.port)), tprotocol.TlsConfig(p.cert)); err != nil {
 		return
 	}
 

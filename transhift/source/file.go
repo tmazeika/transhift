@@ -3,7 +3,7 @@ package source
 import (
 	"os"
 	"github.com/transhift/transhift/common/protocol"
-	"github.com/transhift/transhift/transhift/tstorage"
+	"github.com/transhift/transhift/transhift/storage"
 	"path/filepath"
 )
 
@@ -17,7 +17,7 @@ func getFile(path string) (file *os.File, info protocol.FileInfo, err error) {
 		return
 	}
 
-	hash, err := tstorage.HashFile(file)
+	hash, err := storage.HashFile(file)
 	if err != nil {
 		return
 	}

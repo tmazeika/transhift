@@ -6,7 +6,7 @@ import (
 	"crypto/tls"
 )
 
-func punchHole(host, port string, cert *tls.Certificate, id string) (targetAddr string, err error) {
+func punchHole(host string, port int, cert tls.Certificate, id string) (targetAddr string, err error) {
 	p := puncher.New(host, port, protocol.SourceNode, cert)
 
 	if err = p.Connect(); err != nil {

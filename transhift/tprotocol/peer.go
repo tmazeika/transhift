@@ -12,7 +12,7 @@ type peer struct {
 
 	Enc   *gob.Encoder
 	Dec   *gob.Decoder
-	cert  *tls.Certificate
+	cert  tls.Certificate
 	raddr string
 }
 

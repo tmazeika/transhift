@@ -6,7 +6,7 @@ import (
     "os"
     "crypto/tls"
     "log"
-    "github.com/transhift/transhift/transhift/tstorage"
+    "github.com/transhift/transhift/transhift/storage"
     "github.com/transhift/transhift/transhift/tprotocol"
     "github.com/cheggaaa/pb"
     "io"
@@ -29,32 +29,19 @@ func Start(c *cli.Context) {
         appDir: c.GlobalString("app-dir"),
     }
 
-    s, err := tstorage.Prepare(a.appDir)
+    host, port, cert, err := storage.Prepare(a.appDir)
     if err != nil {
         log.SetOutput(os.Stderr)
-        log.Fatalln("Error:", err)
+        log.Fatalln("error:", err)
     }
 
-    confI, err := s.Config()
-    if err != nil {
-        log.SetOutput(os.Stderr)
-        log.Fatalln("Error:", err)
-    }
-    conf := confI.(*tstorage.Config)
-
-    cert, err := s.Certificate(tstorage.KeyFileName, tstorage.CertFileName)
-    if err != nil {
-        log.SetOutput(os.Stderr)
-        log.Fatalln("Error:", err)
-    }
-
-    if err := run(a, conf, cert); err != nil {
+    if err := run(a, host, port, cert); err != nil {
         log.SetOutput(os.Stderr)
         log.Fatalln("error:", err)
     }
 }
 
-func run(a args, host, port string, cert *tls.Certificate) (err error) {
+func run(a args, host string, port int, cert tls.Certificate) (err error) {
     log.Print("Getting peer address... ")
 
     // Punch TCP hole.
@@ -107,7 +94,7 @@ func run(a args, host, port string, cert *tls.Certificate) (err error) {
 
     log.Print("Verifying... ")
 
-    hash, err := tstorage.HashFile(file)
+    hash, err := storage.HashFile(file)
     if err != nil {
         return
     }
