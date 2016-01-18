@@ -7,6 +7,7 @@ import (
 	"github.com/transhift/transhift/common/protocol"
 	"github.com/transhift/transhift/transhift/tprotocol"
 	"strconv"
+	"syscall"
 )
 
 type puncher struct {
@@ -29,16 +30,18 @@ func New(host string, port int, nodeType protocol.NodeType, cert tls.Certificate
 	}
 }
 
-func (p *puncher) Connect() (err error) {
+func (p *puncher) Connect() (laddr net.Addr, err error) {
 	if p.Conn, err = tls.Dial("tcp", net.JoinHostPort(p.host, strconv.Itoa(p.port)), tprotocol.TlsConfig(p.cert)); err != nil {
 		return
 	}
 
+	laddr = p.Conn.LocalAddr()
 	p.enc = gob.NewEncoder(p.Conn)
 	p.dec = gob.NewDecoder(p.Conn)
 
 	// Send NodeType.
-	return p.enc.Encode(p.nodeType)
+	err = p.enc.Encode(p.nodeType)
+	return
 }
 
 func (p *puncher) Enc() *gob.Encoder {

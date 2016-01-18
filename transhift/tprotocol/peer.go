@@ -22,7 +22,7 @@ func NewPeer(raddr string) *peer {
 	}
 }
 
-func (p *peer) Connect() error {
+func (p *peer) Connect(laddr net.Addr) error {
 	tlsConf := TlsConfig(p.cert)
 
 	done := make(chan struct{})
@@ -37,10 +37,19 @@ func (p *peer) Connect() error {
 		// Wait for interval.
 		<-t
 
+		println("Dialing ", p.raddr, "@", time.Now().String())
+
+		dialer := net.Dialer{}
+		dialer.Timeout = time.Second * 4
+		dialer.LocalAddr = laddr
+		println("  laddr=", laddr.String())
+
 		var err error
-		if p.Conn, err = tls.Dial("tcp", p.raddr, tlsConf); err != nil {
+		if p.Conn, err = tls.DialWithDialer(&dialer, "tcp", p.raddr, tlsConf); err == nil {
 			done <- struct{}{}
 			break
+		} else {
+			println("Failed @", time.Now().String(), ":", err.Error())
 		}
 	}
 
@@ -75,7 +84,7 @@ func ticker(done <-chan struct{}) <-chan struct{} {
 }
 
 func waitForNextSecondCeiled() {
-	nextSecondCeiled := time.Now().Add(time.Second * 2).Truncate(time.Second)
+	nextSecondCeiled := time.Now().Add(time.Second * 6).Truncate(time.Second * 4)
 
 	for {
 		if !time.Now().Before(nextSecondCeiled) {

@@ -41,7 +41,7 @@ func run(a args, host string, port int, cert tls.Certificate) error {
     fmt.Print("Getting peer address... ")
 
     // Punch TCP hole.
-    targetAddr, err := punchHole(host, port, cert, a.id)
+    laddr, targetAddr, err := punchHole(host, port, cert, a.id)
     if err != nil {
         return err
     }
@@ -51,7 +51,7 @@ func run(a args, host string, port int, cert tls.Certificate) error {
 
     // Connect to peer.
     peer := tprotocol.NewPeer(targetAddr)
-    if err := peer.Connect(); err != nil {
+    if err := peer.Connect(laddr); err != nil {
         return err
     }
     defer peer.Close()
