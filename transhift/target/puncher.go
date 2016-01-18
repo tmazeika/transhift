@@ -4,12 +4,11 @@ import (
 	"github.com/transhift/transhift/transhift/puncher"
 	"github.com/transhift/transhift/common/protocol"
 	"crypto/tls"
-	"log"
+	"fmt"
 )
 
 func punchHole(host string, port int, cert tls.Certificate) (sourceAddr string, err error) {
 	p := puncher.New(host, port, protocol.TargetNode, cert)
-
 	if err = p.Connect(); err != nil {
 		return
 	}
@@ -20,7 +19,7 @@ func punchHole(host string, port int, cert tls.Certificate) (sourceAddr string, 
 		return
 	}
 
-	log.Printf("Your ID is '%f'", id)
+	fmt.Printf("your ID is '%s'\n", id)
 
 	// Expect target address.
 	err = p.Dec().Decode(&sourceAddr)
