@@ -4,6 +4,8 @@ import (
 	"github.com/transhift/transhift/transhift/puncher"
 	"github.com/transhift/transhift/common/protocol"
 	"crypto/tls"
+	"fmt"
+	"errors"
 )
 
 func punchHole(host string, port int, cert tls.Certificate, id string) (targetAddr string, err error) {
@@ -15,6 +17,22 @@ func punchHole(host string, port int, cert tls.Certificate, id string) (targetAd
 
 	// Send ID.
 	if err = p.Enc().Encode(id); err != nil {
+		return
+	}
+
+	// Expect signal.
+	var sig protocol.Signal
+	if err = p.Dec().Decode(&sig); err != nil {
+		return
+	}
+
+	switch sig {
+	case protocol.TargetNotFoundSignal:
+		err = errors.New("unknown ID")
+		return
+	case protocol.OkaySignal:
+	default:
+		err = fmt.Errorf("protocol error: unknown signal 0x%x", sig)
 		return
 	}
 
