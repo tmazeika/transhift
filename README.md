@@ -1,4 +1,5 @@
 # Transhift
+[![Build Status](https://travis-ci.org/transhift/transhift.svg?branch=master)](https://travis-ci.org/transhift/transhift)
 
 A tiny and simple peer-to-peer file mover.
 
