@@ -5,7 +5,6 @@ import (
     "path/filepath"
     "os"
     "crypto/tls"
-    "log"
     "github.com/transhift/transhift/transhift/storage"
     "github.com/transhift/transhift/transhift/tprotocol"
     "github.com/cheggaaa/pb"
@@ -13,6 +12,7 @@ import (
     "github.com/transhift/transhift/common/protocol"
     "bytes"
     "errors"
+    "fmt"
 )
 
 type args struct {
@@ -21,9 +21,6 @@ type args struct {
 }
 
 func Start(c *cli.Context) {
-    log.SetOutput(os.Stdout)
-    log.SetFlags(0)
-
     a := args{
         dest:   c.GlobalString("destination"),
         appDir: c.GlobalString("app-dir"),
@@ -31,18 +28,18 @@ func Start(c *cli.Context) {
 
     host, port, cert, err := storage.Prepare(a.appDir)
     if err != nil {
-        log.SetOutput(os.Stderr)
-        log.Fatalln("error:", err)
+        fmt.Fprintln(os.Stderr, "error:", err)
+        return
     }
 
     if err := run(a, host, port, cert); err != nil {
-        log.SetOutput(os.Stderr)
-        log.Fatalln("error:", err)
+        fmt.Fprintln(os.Stderr, "error:", err)
+        return
     }
 }
 
 func run(a args, host string, port int, cert tls.Certificate) (err error) {
-    log.Print("Getting peer address... ")
+    fmt.Print("Getting peer address... ")
 
     // Punch TCP hole.
     targetAddr, err := punchHole(host, port, cert)
@@ -50,8 +47,8 @@ func run(a args, host string, port int, cert tls.Certificate) (err error) {
         return
     }
 
-    log.Println("done")
-    log.Print("Connecting... ")
+    fmt.Println("done")
+    fmt.Print("Connecting... ")
 
     // Connect to peer.
     peer := tprotocol.NewPeer(targetAddr)
@@ -60,8 +57,8 @@ func run(a args, host string, port int, cert tls.Certificate) (err error) {
     }
     defer peer.Close()
 
-    log.Println("done")
-    log.Print("Getting file info... ")
+    fmt.Println("done")
+    fmt.Print("Getting file info... ")
 
     // Expect file info.
     var info protocol.FileInfo
@@ -69,7 +66,7 @@ func run(a args, host string, port int, cert tls.Certificate) (err error) {
         return
     }
 
-    log.Println("done")
+    fmt.Println("done")
 
     absFilePath, err := filepath.Abs(getPath(a.dest, info.Name))
     if err != nil {
@@ -81,7 +78,7 @@ func run(a args, host string, port int, cert tls.Certificate) (err error) {
         return
     }
 
-    log.Printf("Downloading %s to %s ...\n", info.Name, absFilePath)
+    fmt.Printf("Downloading %s to %s ...\n", info.Name, absFilePath)
 
     bar := pb.New64(info.Size).SetUnits(pb.U_BYTES).Format("[=> ]").Start()
     out := io.MultiWriter(file, bar)
@@ -92,7 +89,7 @@ func run(a args, host string, port int, cert tls.Certificate) (err error) {
 
     bar.FinishPrint("Done!")
 
-    log.Print("Verifying... ")
+    fmt.Print("Verifying... ")
 
     hash, err := storage.HashFile(file)
     if err != nil {
@@ -101,7 +98,7 @@ func run(a args, host string, port int, cert tls.Certificate) (err error) {
     verified := bytes.Equal(hash, info.Hash)
 
     if verified {
-        log.Println("done")
+        fmt.Println("done")
     } else {
         err = errors.New("failed: the file may have been corrupted in transport")
     }
