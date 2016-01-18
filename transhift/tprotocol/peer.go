@@ -63,7 +63,7 @@ func ticker(done <-chan struct{}) <-chan struct{} {
 		for {
 			select {
 			case <-t.C:
-				ch <- struct{}
+				ch <- struct{}{}
 			case <-done:
 				t.Stop()
 				return

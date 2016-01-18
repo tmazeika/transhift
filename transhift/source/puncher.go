@@ -9,8 +9,8 @@ import (
 func punchHole(host, port string, cert *tls.Certificate, id string) (targetAddr string, err error) {
 	p := puncher.New(host, port, protocol.SourceNode, cert)
 
-	if err := p.Connect(); err != nil {
-		return err
+	if err = p.Connect(); err != nil {
+		return
 	}
 
 	// Send ID.

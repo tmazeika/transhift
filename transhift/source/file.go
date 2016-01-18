@@ -17,10 +17,15 @@ func getFile(path string) (file *os.File, info protocol.FileInfo, err error) {
 		return
 	}
 
+	hash, err := tstorage.HashFile(file)
+	if err != nil {
+		return
+	}
+
 	info = protocol.FileInfo{
 		Name: filepath.Base(fileInfo.Name()),
 		Size: fileInfo.Size(),
-		Hash: tstorage.HashFile(file),
+		Hash: hash,
 	}
 	return
 }

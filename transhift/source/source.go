@@ -34,11 +34,12 @@ func Start(c *cli.Context) {
         log.Fatalln("Error:", err)
     }
 
-    conf, err := s.Config().(tstorage.Config)
+    confI, err := s.Config()
     if err != nil {
         log.SetOutput(os.Stderr)
         log.Fatalln("Error:", err)
     }
+    conf := confI.(map[string]interface{})
 
     cert, err := s.Certificate(tstorage.KeyFileName, tstorage.CertFileName)
     if err != nil {
@@ -52,11 +53,11 @@ func Start(c *cli.Context) {
     }
 }
 
-func run(a args, conf *tstorage.Config, cert *tls.Certificate) error {
+func run(a args, conf map[string]interface{}, cert *tls.Certificate) error {
     log.Print("Getting peer address... ")
 
     // Punch TCP hole.
-    targetAddr, err := punchHole(conf.Puncher["host"], conf.Puncher["port"], cert, a.id)
+    targetAddr, err := punchHole(conf["host"].(string), conf["port"].(string), cert, a.id)
     if err != nil {
         return err
     }
@@ -74,7 +75,7 @@ func run(a args, conf *tstorage.Config, cert *tls.Certificate) error {
     log.Println("done")
     log.Print("Sending file info... ")
 
-    file, info, err := getFile(args.filePath)
+    file, info, err := getFile(a.filePath)
     if err != nil {
         return err
     }
