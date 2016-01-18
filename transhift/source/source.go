@@ -105,6 +105,7 @@ func run(a args, conf *tstorage.Config, cert *tls.Certificate) error {
 
     log.Print("Awaiting verification... ")
 
+    // Expect verification.
     var verified bool
     if err := peer.Dec.Decode(&verified); err != nil {
         return err
