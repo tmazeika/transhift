@@ -4,6 +4,7 @@ import (
 	"os"
 	"github.com/transhift/transhift/common/protocol"
 	"github.com/transhift/transhift/transhift/tstorage"
+	"path/filepath"
 )
 
 func getFile(path string) (file *os.File, info protocol.FileInfo, err error) {
@@ -17,7 +18,7 @@ func getFile(path string) (file *os.File, info protocol.FileInfo, err error) {
 	}
 
 	info = protocol.FileInfo{
-		Name: fileInfo.Name(),
+		Name: filepath.Base(fileInfo.Name()),
 		Size: fileInfo.Size(),
 		Hash: tstorage.HashFile(file),
 	}

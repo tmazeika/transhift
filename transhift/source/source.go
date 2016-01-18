@@ -3,47 +3,14 @@ package source
 import (
     "github.com/codegangsta/cli"
     "path/filepath"
-    "net"
-    "fmt"
     "os"
     "crypto/tls"
-    "time"
-    "github.com/transhift/common/common"
-    "github.com/transhift/transhift/common/storage"
     "log"
     "github.com/transhift/transhift/transhift/tstorage"
     "github.com/transhift/transhift/transhift/tprotocol"
+    "github.com/cheggaaa/pb"
+    "io"
 )
-
-func (p *DownloadPeer) SendFileInfo(fileInfo os.FileInfo, hash []byte) error {
-    p.out.Ch <- common.Message{
-        Packet: common.FileName,
-        Body:   []byte(filepath.Base(fileInfo.Name())),
-    }
-    <- p.out.Done
-
-    if p.out.Err != nil {
-        return p.out.Err
-    }
-
-    p.out.Ch <- common.Message{
-        Packet: common.FileSize,
-        Body:   uint64ToBytes(uint64(fileInfo.Size())),
-    }
-    <- p.out.Done
-
-    if p.out.Err != nil {
-        return p.out.Err
-    }
-
-    p.out.Ch <- common.Message{
-        Packet: common.FileHash,
-        Body:   []byte(hash),
-    }
-    <- p.out.Done
-
-    return p.out.Err
-}
 
 type args struct {
     id       string
@@ -83,77 +50,6 @@ func Start(c *cli.Context) {
         log.SetOutput(os.Stderr)
         log.Fatalln("error:", err)
     }
-
-////////////////////////////////////////////////////////////////////////////////
-
-    defer peer.conn.Close()
-
-    fmt.Println("done")
-    fmt.Print("Sending file info... ")
-
-    file, err := os.Open(args.filePath)
-
-    if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        return
-    }
-
-    defer file.Close()
-
-    fileInfo, err := file.Stat()
-
-    if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        return
-    }
-
-    fileHash, err := common.CalculateFileHash(file)
-
-    if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        return
-    }
-
-    err = peer.SendFileInfo(fileInfo, fileHash)
-
-    if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        return
-    }
-
-    fmt.Println("done")
-    fmt.Printf("Uploading %s ...\n", args.AbsFilePath())
-
-    // TODO: redo
-    /*var bytesWritten uint64
-    progressBar := ProgressBar{
-        current: &bytesWritten,
-        total:   uint64(fileInfo.Size()),
-    }
-
-    progressBar.Start()
-
-    for bytesWritten < uint64(fileInfo.Size()) {
-        adjustedChunkSize := uint64Min(uint64(fileInfo.Size()) - bytesWritten, ChunkSize)
-        chunkBuffer := make([]byte, adjustedChunkSize)
-        chunkBytesWritten, _ := file.ReadAt(chunkBuffer, int64(bytesWritten))
-        bytesWritten += uint64(chunkBytesWritten)
-        peer.conn.Write(chunkBuffer)
-    }
-
-    progressBar.Stop(true)
-    fmt.Print("Verifying file... ")
-
-    switch <- msgCh {
-    case common.ChecksumMatch:
-        fmt.Println("done")
-    case common.ChecksumMismatch:
-        fmt.Fprintln(os.Stderr, "checksum mismatch")
-        os.Exit(1)
-    default:
-        fmt.Fprintln(os.Stderr, "protocol error")
-        os.Exit(1)
-    }*/
 }
 
 func run(a args, conf *tstorage.Config, cert *tls.Certificate) error {
@@ -190,4 +86,34 @@ func run(a args, conf *tstorage.Config, cert *tls.Certificate) error {
     }
 
     log.Println("done")
+
+    absFilePath, err := filepath.Abs(file.Name())
+    if err != nil {
+        return err
+    }
+
+    log.Printf("Uploading %s ...\n", absFilePath)
+
+    bar := pb.New64(info.Size).SetUnits(pb.U_BYTES).Format("[=> ]").Start()
+    out := io.MultiWriter(peer.Conn, bar)
+
+    if _, err := io.Copy(out, file); err != nil {
+        return err
+    }
+
+    bar.FinishPrint("Done!")
+
+    log.Print("Awaiting verification... ")
+
+    var verified bool
+    if err := peer.Dec.Decode(&verified); err != nil {
+        return err
+    }
+
+    if verified {
+        log.Println("done")
+    } else {
+        log.Println("failed: the file may have been corrupted in transport")
+    }
+    return nil
 }
