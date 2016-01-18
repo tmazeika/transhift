@@ -23,15 +23,15 @@ func Prepare(appDirPath string) (host string, port int, cert tls.Certificate, er
 
 	const ConfigName = "config.json"
 	file, err := dir.IfNExistsThenGet(ConfigName, func(file *os.File) (b []byte, err error) {
-		b =
+		s :=
 // Default config.
 `{
-	"puncher": {
-		"host": "104.236.76.95",
-		"port": 50977
-	}
+  "puncher": {
+    "host": "104.236.76.95",
+    "port": 50977
+  }
 }`
-		return
+		return []byte(s), nil
 	})
 	if err != nil {
 		return
